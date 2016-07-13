@@ -1,5 +1,4 @@
 <link rel="import" href="../../bower_components/polymer/polymer.html">
-<link rel="import" href="../../bower_components/paper-styles/typography.html">
 <link rel="import" href="../../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
 <link rel="import" href="../../bower_components/paper-toolbar/paper-toolbar.html">
@@ -140,6 +139,16 @@
 			value : 'http://localhost:4000'
 		},
 		
+		defaultIcon : {
+			type : String,
+			value : 'http://46.101.211.226:5000/media/assets/theme-vinegret/logo-vinegret-mobile.png'
+		},
+		
+		percentMinimize : {
+			type : Number,
+			value : 0.5
+		},
+		
 		/*does there exist something to filter out against so we don't filter everything*/
 		canFilter : {
 			type : Boolean,
@@ -153,6 +162,7 @@
 		allMarkers = [];
 		allPolys = [];
 		this.defaultMapOptions.center = new google.maps.LatLng(this.defaultCenter);
+		iconUrl = this.defaultIcon;
 	},
 	
 	/*builds map*/
@@ -259,11 +269,10 @@
 	
 	/*minimizes height of map as specified by percentMinimize*/
 	minimize : function (ev) {
-		var percentMinimize = 0.5;
 		var minButton = this.$.min_button;
 		var mapCanvas = this.$.map_canvas;
 		if(minButton.icon == "expand-less"){
-			mapCanvas.style.height = (originalMapHeight * percentMinimize).toString() + "px";
+			mapCanvas.style.height = (originalMapHeight * this.percentMinimize).toString() + "px";
 			minButton.icon = "expand-more";
 		} else {
 			mapCanvas.style.height = originalMapHeight.toString() + "px";
@@ -385,7 +394,7 @@
 		allPolys.forEach(function(poly){
 			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
 					marker.setOptions({
-						icon : "http://46.101.211.226:5000/media/assets/theme-vinegret/logo-vinegret-mobile.png",
+						icon : iconUrl
 					});
 					marker.selected = true;
 					canFilter = true;
