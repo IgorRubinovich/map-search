@@ -1,0 +1,24 @@
+{
+  "name": "map-search",
+  "main": "index.html",
+  "version": "0.2.0",
+  "authors": [
+    "Danny Semeniuta <d.semeniuta@gmail.com>"
+  ],
+  "license": "MIT",
+  "private": true,
+  "keywords": [
+	"web-components",
+	"polymer"
+  ],
+  "dependencies": {
+	"map-search": "IgorRubinovich/map-search#^0.2.0"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
