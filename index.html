@@ -1,0 +1,36 @@
+<html>
+
+<link rel="import" href="../elements/map-search/map-search.html">
+
+<head>
+
+</head>
+
+<body>
+
+<map-search id="map_search"></map-search>
+
+<button type="button" onclick="run()">Click!</button>
+
+</body>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+<script>
+
+run = function(){
+	base = {lat: 50.0755, lng: 14.4378};
+	objArr = [];
+	generateObjects();
+	document.querySelector("#map_search").newMarker(objArr);
+}
+
+function generateObjects(){
+	for (i=0; i < 5; i++){
+		objArr.push(obj = {lat: (Math.random()/100+base.lat), lng: (Math.random()/100+base.lng)});
+	}
+}
+
+</script>
+
+
+</html>
