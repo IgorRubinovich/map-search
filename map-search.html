@@ -173,6 +173,9 @@
 		bounds = new google.maps.LatLngBounds();
 		if(allMarkers.length)
 			map.fitBounds(bounds);
+		infowindow = new google.maps.InfoWindow({
+			content : 'Hello World!'
+		});
 	},
 	
 	/*makes a call to server to pull data on markers from it*/
@@ -204,13 +207,18 @@
 			delete obj.lat;
 			delete obj.lng;
 			marker.setOptions(obj)
-			if(marker.link)
+			if(marker.link && 0)
 				google.maps.event.addListener(marker, 'click', function() {
 					window.location = this.link;
 				});
 			markerInShape(marker);
 			allMarkers.push(marker);
 			bounds.extend(marker.position);
+			if(obj.info)
+				marker.addListener('click', function() {
+					infowindow.setContent(obj.info);
+					infowindow.open(map, marker);
+				});
 		});
 		map.fitBounds(bounds);
 	},
@@ -401,8 +409,7 @@
 					return;
 				}
 		});
-	}
-		
+	}		
 		
 	</script>
 
