@@ -1,0 +1,416 @@
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../../bower_components/paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+
+
+<dom-module id="map-search">
+	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script src="http://www.bdcc.co.uk/Gmaps/GDouglasPeuker.js"></script>
+	<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false&.js&libraries=geometry"></script>
+
+	<template>
+		<style>
+		
+			#map_canvas{
+				height: 600px;
+				width: 100%;
+				transition: height 500ms;
+			}
+			
+			paper-icon-button {
+				color: white;
+			}
+		
+		</style>
+
+		<div id="wrap">
+			<paper-toolbar id="map_functions">
+			
+				<div id="draw">
+					<a href="#" on-click="draw" target="_self" tabindex="-1">
+						<paper-icon-button id="draw_icon" icon="create"></paper-icon-button>
+					</a>
+				</div>
+				<div id="clear">
+					<a href="#" on-click="clear" target="_self" tabindex="-1">
+						<paper-icon-button icon="clear"></paper-icon-button>
+					</a>
+				</div>
+				<div id="filter">
+					<a href="#" on-click="filter" target="_self" tabindex="-1">
+						<paper-icon-button icon="filter-list"></paper-icon-button>
+					</a>
+				</div>
+				<div id="reload"> 
+					<a href="#" on-click="reload" target="_self" tabindex="-1">
+						<paper-icon-button icon="refresh"></paper-icon-button>
+					</a>
+				</div>
+				<div>
+					<a href="#" on-click="loadFromServer" target="_self" tabindex="-1">
+						<paper-icon-button icon="cloud-download"></paper-icon-button>
+					</a>
+				</div>
+				<div id="minimize">
+					<a href="#"  on-click="minimize" target="_self" tabindex="-1">
+						<paper-icon-button icon="expand-less" id="min_button"></paper-icon-button>
+					</a>
+				</div>
+				<div id="collapse">
+					<a href="#" on-click="collapse" target="_self" tabindex="-1">
+						<paper-icon-button icon="fullscreen-exit" id="collapse_button"></paper-icon-button>
+					</a>
+				</div>
+				
+				
+			</paper-toolbar>
+		</div>	
+		<div id="map_canvas"></div>
+		
+		<iron-ajax
+			id="marker_loader"
+			handle-as="json"
+			debounce-duration="300"
+			on-response="itemsLoaded"
+			last-response="{{ items }}"
+			last-error="{{ lastError }}"
+			verbose=true
+		></iron-ajax>
+		
+		
+	</template>
+
+
+	
+  <script>
+	Polymer({
+	is: 'map-search',
+
+	properties : {
+		map : {
+			type: Object
+		},
+		
+		/*default center of the map*/
+		defaultCenter : {
+			type : Object,
+			value : {
+				lat:50.0755,
+				lng:14.4378
+			}
+		},
+		
+		/*default map load*/
+		defaultMapOptions : {
+			type : Object,
+			value : {
+				zoom: 17,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			}
+		},
+		
+		originalMapHeight : {
+			type : Number
+		},
+		
+		allMarkers : {
+			type : Array,
+		},
+		
+		allPolys : {
+			type : Array,
+		},
+		
+		/*if true, beginning to draw a new poly will erase previous polys*/
+		onePolyActive : {
+			type : Boolean,
+			value : true,
+			readOnly : true
+		},
+		
+		/*url to pull marker data from*/
+		dataServer : {
+			type : String,
+			value : 'http://localhost:4000'
+		},
+		
+		defaultIcon : {
+			type : String,
+			value : 'http://46.101.211.226:5000/media/assets/theme-vinegret/logo-vinegret-mobile.png'
+		},
+		
+		percentMinimize : {
+			type : Number,
+			value : 0.5
+		},
+		
+		/*does there exist something to filter out against so we don't filter everything*/
+		canFilter : {
+			type : Boolean,
+			value : false,
+		}
+		
+	},
+	
+	/*initializes marker and poly arrays*/
+	ready : function() {
+		allMarkers = [];
+		allPolys = [];
+		this.defaultMapOptions.center = new google.maps.LatLng(this.defaultCenter);
+		iconUrl = this.defaultIcon;
+	},
+	
+	/*builds map*/
+	attached : function() {
+		map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
+		//stores original height for restoring to later
+		originalMapHeight = parseFloat(getComputedStyle(this.$.map_canvas).height);
+		bounds = new google.maps.LatLngBounds();
+		if(allMarkers.length)
+			map.fitBounds(bounds);
+		infowindow = new google.maps.InfoWindow({
+			content : 'Hello World!'
+		});
+	},
+	
+	/*makes a call to server to pull data on markers from it*/
+	loadFromServer : function () {
+		loader = this.$.marker_loader;
+		loader.url = this.dataServer;
+		loader.generateRequest();
+	},
+	
+	/*called when loader's request is responded. builds markers from the data*/
+	itemsLoaded : function () {
+		this.newMarker(loader.lastResponse);
+	},
+	
+	/*creates a new marker from an object or array of objects containing marker options*/
+	newMarker : function(object) {
+		if(!object instanceof Array){
+			object = [object];
+		}
+	
+		object.forEach(function(obj){
+			if(!obj.lat || !obj.lng)
+				throw ("Given marker object has no position!");
+			var marker = new google.maps.Marker({
+				position: new google.maps.LatLng(obj.lat, obj.lng),
+				map: map,
+				title: 'Hello World!'
+			});
+			delete obj.lat;
+			delete obj.lng;
+			marker.setOptions(obj)
+			if(marker.link && 0)
+				google.maps.event.addListener(marker, 'click', function() {
+					window.location = this.link;
+				});
+			markerInShape(marker);
+			allMarkers.push(marker);
+			bounds.extend(marker.position);
+			if(obj.info)
+				marker.addListener('click', function() {
+					infowindow.setContent(obj.info);
+					infowindow.open(map, marker);
+				});
+		});
+		map.fitBounds(bounds);
+	},
+	
+	/*free hand drawing of polygons. all markers inside shape marked as selected*/
+	draw : function (ev) {
+		var that = this;
+		ev.preventDefault();
+		disable();
+        google.maps.event.addDomListener(map.getDiv(),'mousedown',function(e){
+			if(that.onePolyActive && allPolys.length)
+				that.clear(ev);
+            drawFreeHand(markersInShape);
+        });
+		
+	},
+	
+	/*first click, clears away polys. second click, clears away marked icons*/
+	clear : function (ev) {
+		if(allPolys.length){
+			while(allPolys.length)
+				allPolys.pop().setMap(null);
+			return;
+		}
+				
+		for(i = 0; i < allMarkers.length; i++){
+			if(allMarkers[i].getIcon()){
+				allMarkers[i].setOptions({
+					icon: null,
+				});
+				allMarkers[i].selected = false;
+			}
+		}
+			
+		canFilter = false;
+	},
+	
+	/*removes all markers that aren't selected*/
+	filter : function (ev) {
+		if(canFilter)
+			for(i = 0; i < allMarkers.length; i++)
+				if(!allMarkers[i].selected)
+					allMarkers[i].setMap(null);
+	},
+	
+	/*restores map to clean icons of all past loaded markers*/
+	reload : function (ev) {
+		if(allPolys.length)
+			this.clear(ev);
+		this.clear(ev);
+		for(i = 0; i < allMarkers.length; i++)
+			allMarkers[i].setMap(map);
+		map.fitBounds(bounds);
+		canFilter = false;
+	},
+	
+	/*minimizes height of map as specified by percentMinimize*/
+	minimize : function (ev) {
+		var minButton = this.$.min_button;
+		var mapCanvas = this.$.map_canvas;
+		if(minButton.icon == "expand-less"){
+			mapCanvas.style.height = (originalMapHeight * this.percentMinimize).toString() + "px";
+			minButton.icon = "expand-more";
+		} else {
+			mapCanvas.style.height = originalMapHeight.toString() + "px";
+			minButton.icon = "expand-less";
+			this.$.collapse_button.icon = "fullscreen-exit";
+		}
+		setTimeout(function() {
+			google.maps.event.trigger(map, 'resize');
+			map.fitBounds(bounds);
+		}, parseFloat(getComputedStyle(mapCanvas).transitionDuration) * 1000);
+	},
+	
+	/*collapses the element to just the toolbar*/
+	collapse : function () {
+		var colButton = this.$.collapse_button;
+		var mapCanvas = this.$.map_canvas;
+		if(colButton.icon == "fullscreen-exit"){
+			mapCanvas.style.height = 0;
+			colButton.icon = "fullscreen";
+			this.$.min_button.icon = "expand-more";
+		} else {
+			mapCanvas.style.height = originalMapHeight.toString() + "px";
+			colButton.icon = "fullscreen-exit";
+			this.$.min_button.icon = "expand-less";
+		}
+		setTimeout(function() {
+			google.maps.event.trigger(map, 'resize');
+			map.fitBounds(bounds);
+		}, parseFloat(getComputedStyle(mapCanvas).transitionDuration) * 1000);
+	},
+	
+});
+    
+	//dummy function to create new marker from set of lat, lng points
+	/*function newMarker(lat, lng) {
+		allMarkers.push(marker = new google.maps.Marker({
+			position: new google.maps.LatLng(lat,lng),
+			map: map,
+			title: 'Hello World!'
+		}));
+		bounds.extend(marker.position);
+	}*/
+	
+	/* adds function to prototype of a maps polygon.
+	 * RETURN: north, east, south, and west bounds of the polygon, as an object*/
+	google.maps.Polygon.prototype.getNESW = function() {
+		var bounds = new google.maps.LatLngBounds();
+		var paths = this.getPaths();
+		for (var i = 0; i < paths.getLength(); i++) {
+			var path = paths.getAt(i);
+			for (var j = 0; j < path.getLength(); j++) {
+				bounds.extend(path.getAt(j));
+			}
+		}
+		var coords = {
+			north:	bounds.getNorthEast().toJSON().lat,
+			east:	bounds.getNorthEast().toJSON().lng,
+			south:	bounds.getSouthWest().toJSON().lat,
+			west:	bounds.getSouthWest().toJSON().lng
+		};
+		return coords;
+	}
+	
+	function drawFreeHand(fooMarkersInShape){
+
+		//the polygon
+		poly = new google.maps.Polyline({map:map,clickable:false});
+		
+		//move-listener
+		var move=google.maps.event.addListener(map,'mousemove',function(e){
+			poly.getPath().push(e.latLng);
+		});
+		
+		//mouseup-listener
+		google.maps.event.addListenerOnce(map,'mouseup',function(e){
+			google.maps.event.removeListener(move);
+			var path = poly.getPath();
+			poly.setMap(null);
+			poly = new google.maps.Polygon({map:map,path:path});
+			allPolys.push(poly);
+			
+			google.maps.event.clearListeners(map.getDiv(), 'mousedown');
+			
+			enable()
+			
+			fooMarkersInShape();
+		});
+	}
+
+	/*disable and enable turn off map functionality for drawing then turn it back on when done*/
+	function disable(){
+        map.setOptions({
+            draggable: false, 
+            zoomControl: false, 
+            scrollwheel: false, 
+            disableDoubleClickZoom: false,
+			clickableIcons: false
+        });
+    }
+    
+    function enable(){
+        map.setOptions({
+            draggable: true, 
+            zoomControl: true, 
+            scrollwheel: true, 
+            disableDoubleClickZoom: true,
+			clickableIcons: true
+        });
+    }
+	
+	/*checks all markers after a new shape is created*/
+	function markersInShape(){
+		for(i = 0; i < allMarkers.length; i++)
+			markerInShape(allMarkers[i]);
+	}
+	
+	/*checks a giver marker against all shapes when it is created*/
+	function markerInShape(marker){
+		allPolys.forEach(function(poly){
+			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
+					marker.setOptions({
+						icon : iconUrl
+					});
+					marker.selected = true;
+					canFilter = true;
+					return;
+				}
+		});
+	}		
+		
+	</script>
+
+</dom-module>
