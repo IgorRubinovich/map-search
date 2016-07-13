@@ -1,0 +1,18 @@
+[submodule "polymer"]
+    path = bower_components/polymer/polymer.html
+    url = https://github.com/Polymer/polymer.git
+[submodule "paper-button"]
+    path = bower_components/paper-button/paper-button.html
+    url = https://github.com/PolymerElements/paper-button.git
+[submodule "iron-ajax"]
+    path = bower_components/iron-ajax/iron-ajax.html
+    url = https://github.com/PolymerElements/iron-ajax.git
+[submodule "paper-toolbar"]
+    path = bower_components/paper-toolbar/paper-toolbar.html
+    url = https://github.com/PolymerElements/paper-toolbar.git
+[submodule "paper-icon-button"]
+    path = bower_components/paper-icon-button/paper-icon-button.html
+    url = https://github.com/PolymerElements/paper-icon-button.git
+[submodule "iron-icons"]
+    path = bower_components/iron-icons/iron-icons.html
+    url = https://github.com/PolymerElements/iron-icons.git
