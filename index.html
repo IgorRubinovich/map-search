@@ -6,11 +6,11 @@
 
 </head>
 
-<body onload="run()">
+<body>
 
 <button type="button" onclick="run()">Click to generate more points</button>
 
-<map-search id="map_search"></map-search>
+<map-search id="map_search" onload="run()"></map-search>
 
 
 
@@ -19,7 +19,7 @@
 
 <script>
 
-run = function(){
+function run(){
 	base = {lat: 50.0755, lng: 14.4378};
 	objArr = [];
 	generateObjects();
