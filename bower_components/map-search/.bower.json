@@ -27,14 +27,14 @@
     "test",
     "tests"
   ],
-  "version": "0.2.0",
-  "_release": "0.2.0",
+  "version": "0.2.1",
+  "_release": "0.2.1",
   "_resolution": {
     "type": "version",
-    "tag": "v0.2.0",
-    "commit": "fae4ae775d52d84db636ccbcd6076dd81f56701e"
+    "tag": "v0.2.1",
+    "commit": "37f8f67fda01adb99483b6f3f65d1ad9d532e7ec"
   },
   "_source": "git://github.com/IgorRubinovich/map-search.git",
-  "_target": "^0.2.0",
+  "_target": "^0.2.1",
   "_originalSource": "IgorRubinovich/map-search"
 }

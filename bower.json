@@ -12,7 +12,7 @@
 	"polymer"
   ],
   "dependencies": {
-	"map-search": "IgorRubinovich/map-search#^0.2.0"
+	"map-search": "IgorRubinovich/map-search#^0.2.1"
   },
   "ignore": [
     "**/.*",
