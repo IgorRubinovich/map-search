@@ -6,11 +6,11 @@
 
 </head>
 
-<body>
+<body onload="loaded()">
 
 <button type="button" onclick="run()">Click to generate more points</button>
 
-<map-search id="map_search" onload="run()"></map-search>
+<map-search id="map_search"></map-search>
 
 
 
@@ -18,6 +18,16 @@
 <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
 
 <script>
+
+var imgSrc = "https://unsplash.it/100/";
+
+function loaded(){
+	setTimeout(function(){
+		run();
+	}, 500);
+
+}
+
 
 function run(){
 	base = {lat: 50.0755, lng: 14.4378};
@@ -28,8 +38,32 @@ function run(){
 
 function generateObjects(){
 	for (i=0; i < 5; i++){
-		objArr.push(obj = {lat: (Math.random()/100+base.lat), lng: (Math.random()/100+base.lng)});
+		var obj = {
+			lat: (Math.random()/100+base.lat),
+			lng: (Math.random()/100+base.lng),
+		}
+		obj.info = (generateInfo(obj.lat, obj.lng));
+		objArr.push(obj);
 	}
+}
+
+function generateInfo(lat, lng){
+	var infoString = '<head>' + 
+	'<style>' +
+	'p { text-align: center}' +
+	'img.displayed { display: block; margin-left: auto; margin-right: auto }' + 
+	'</style>' +
+	'</head>' +
+	'<body>' +
+	'<div id="content">' + 
+	'<img class="displayed" src="' + imgSrc + '" alt="Splash Image">' +
+	'<div id="bodyContent">' +
+	'<p>Lat: ' + lat.toString().substring(0, 7) + '</p>' +
+	'<p>Lng: ' + lng.toString().substring(0, 7) + '</p>' + 
+	'</div>' +
+	'</div>' +
+	'</body>';
+	return infoString;
 }
 
 </script>
