@@ -8,11 +8,11 @@
   "license": "MIT",
   "private": true,
   "keywords": [
-	"web-components",
-	"polymer"
+    "web-components",
+    "polymer"
   ],
   "dependencies": {
-	"map-search": "IgorRubinovich/map-search#^0.2.1"
+    "map-search": "IgorRubinovich/map-search#^0.3.0"
   },
   "ignore": [
     "**/.*",
