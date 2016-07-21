@@ -10,8 +10,7 @@
 
 <dom-module id="map-search">
 	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-	<!-- <script src="http://www.bdcc.co.uk/Gmaps/GDouglasPeuker.js"></script> -->
-	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB3i8skc53lisiRya9bF5tF5bOklfJFSC0&v=3.exp&sensor=false&.js&libraries=geometry"></script>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB3i8skc53lisiRya9bF5tF5bOklfJFSC0&v=3.exp&sensor=false&.js&libraries=geometry,places"></script>
 
 	<template>
 		<style>
@@ -25,9 +24,37 @@
 			paper-icon-button {
 				color: white;
 			}
+			
+			.controls {
+				margin-top: 10px;
+				border: 1px solid transparent;
+				border-radius: 2px 0 0 2px;
+				box-sizing: border-box;
+				-moz-box-sizing: border-box;
+				height: 32px;
+				outline: none;
+				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+			}
+
+			#pac-input {
+				background-color: #fff;
+				font-family: Roboto;
+				font-size: 15px;
+				font-weight: 300;
+				margin-left: 12px;
+				padding: 0 11px 0 13px;
+				text-overflow: ellipsis;
+				width: 300px;
+			}
+
+			#pac-input:focus {
+				border-color: #4d90fe;
+			}
+
 		
 		</style>
 
+		<input id="pac-input" class="controls" type="text" placeholder="Search Box" >
 		<div id="wrap">
 			<paper-toolbar id="map_functions">
 			
@@ -66,6 +93,11 @@
 						<paper-icon-button icon="fullscreen-exit" id="collapse_button"></paper-icon-button>
 					</a>
 				</div>
+				<div id="clear_all">
+					<a href="#" on-click="clearAll" target="_self" tabindex="-1">
+						<paper-icon-button icon="highlight-off" id="clear_all_button"></paper-icon-button>
+					</a>
+				</div>
 				
 				
 			</paper-toolbar>
@@ -102,7 +134,13 @@
 			value : {
 				lat:50.0755,
 				lng:14.4378
-			}
+			},
+			readOnly: true
+		},
+		
+		/*point at which to center map at*/
+		displayCenter : {
+			type : Object,
 		},
 		
 		/*default map load*/
@@ -112,6 +150,12 @@
 				zoom: 17,
 				mapTypeId: google.maps.MapTypeId.ROADMAP
 			}
+		},
+		
+		/*Will be given by user, sets map zoom to fit bounds of circle of radius in km*/
+		displayRadius : {
+			type : Number,
+			observer : '_radiusChanged'
 		},
 		
 		originalMapHeight : {
@@ -161,7 +205,8 @@
 	ready : function() {
 		allMarkers = [];
 		allPolys = [];
-		this.defaultMapOptions.center = new google.maps.LatLng(this.defaultCenter);
+		this.displayCenter = this.defaultCenter;
+		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
 		iconUrl = this.defaultIcon;
 	},
 	
@@ -176,6 +221,70 @@
 		infowindow = new google.maps.InfoWindow({
 			content : 'Hello World!'
 		});
+		
+		this.initializeSearchBox();
+		
+	},
+	
+	initializeSearchBox : function() {
+		// Create the search box and link it to the UI element.
+        var input = document.getElementById('pac-input');
+        var searchBox = new google.maps.places.SearchBox(input);
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+        // Bias the SearchBox results towards current map's viewport.
+        map.addListener('bounds_changed', function() {
+          searchBox.setBounds(map.getBounds());
+        });
+
+        var markers = [];
+        // Listen for the event fired when the user selects a prediction and retrieve
+        // more details for that place.
+        searchBox.addListener('places_changed', function() {
+          var places = searchBox.getPlaces();
+
+          if (places.length == 0) {
+            return;
+          }
+
+          // Clear out the old markers.
+          markers.forEach(function(marker) {
+            marker.setMap(null);
+          });
+          markers = [];
+
+          // For each place, get the icon, name and location.
+          var bounds = new google.maps.LatLngBounds();
+          places.forEach(function(place) {
+            if (!place.geometry) {
+              console.log("Returned place contains no geometry");
+              return;
+            }
+            var icon = {
+              url: place.icon,
+              size: new google.maps.Size(71, 71),
+              origin: new google.maps.Point(0, 0),
+              anchor: new google.maps.Point(17, 34),
+              scaledSize: new google.maps.Size(25, 25)
+            };
+
+            // Create a marker for each place.
+            markers.push(new google.maps.Marker({
+              map: map,
+              icon: icon,
+              title: place.name,
+              position: place.geometry.location
+            }));
+
+            if (place.geometry.viewport) {
+              // Only geocodes have viewport.
+              bounds.union(place.geometry.viewport);
+            } else {
+              bounds.extend(place.geometry.location);
+            }
+          });
+          map.fitBounds(bounds);
+        });
 	},
 	
 	/*makes a call to server to pull data on markers from it*/
@@ -279,6 +388,7 @@
 	minimize : function (ev) {
 		var minButton = this.$.min_button;
 		var mapCanvas = this.$.map_canvas;
+		this.displayCenter = map.getCenter();
 		if(minButton.icon == "expand-less"){
 			mapCanvas.style.height = (originalMapHeight * this.percentMinimize).toString() + "px";
 			minButton.icon = "expand-more";
@@ -287,9 +397,10 @@
 			minButton.icon = "expand-less";
 			this.$.collapse_button.icon = "fullscreen-exit";
 		}
+		var that = this;
 		setTimeout(function() {
 			google.maps.event.trigger(map, 'resize');
-			map.fitBounds(bounds);
+			map.panTo(that.displayCenter);
 		}, parseFloat(getComputedStyle(mapCanvas).transitionDuration) * 1000);
 	},
 	
@@ -297,6 +408,8 @@
 	collapse : function () {
 		var colButton = this.$.collapse_button;
 		var mapCanvas = this.$.map_canvas;
+		if(map.getCenter())
+			this.displayCenter = map.getCenter();
 		if(colButton.icon == "fullscreen-exit"){
 			mapCanvas.style.height = 0;
 			colButton.icon = "fullscreen";
@@ -306,11 +419,25 @@
 			colButton.icon = "fullscreen-exit";
 			this.$.min_button.icon = "expand-less";
 		}
+		var that = this;
 		setTimeout(function() {
 			google.maps.event.trigger(map, 'resize');
-			map.fitBounds(bounds);
+			if(map.getCenter())
+				map.panTo(that.displayCenter);
 		}, parseFloat(getComputedStyle(mapCanvas).transitionDuration) * 1000);
 	},
+	
+	clearAll : function () {
+		while(allMarkers.length)
+			allMarkers.pop().setMap(null);
+	},
+	
+	_radiusChanged : function () {
+		var circ = new google.maps.Circle();
+		circ.setRadius(this.displayRadius * 1000);
+		circ.setCenter(this.displayCenter);
+		map.fitBounds(circ.getBounds());
+	}
 	
 });
     
