@@ -8,7 +8,11 @@
 
 <body onload="loaded()">
 
-<button type="button" onclick="run()">Click to generate more points</button>
+<button type="button" onclick="run()">Click to generate more points</button><br>
+Radius: <input type="number" name="radius" id="myRadius"
+			onkeyup = "if (event.keyCode == 13)
+				document.getElementById('radiusBtn').click()">	
+<button type="button" id="radiusBtn" onclick="setRadius()">Radius!</button>
 
 <map-search id="map_search"></map-search>
 
@@ -64,6 +68,14 @@ function generateInfo(lat, lng){
 	'</div>' +
 	'</body>';
 	return infoString;
+}
+
+function setRadius(){
+	var radius = document.getElementById("myRadius").value;
+	if(!radius)
+		alert("Please enter a number!");
+	else
+		document.querySelector("#map_search").displayRadius = radius;
 }
 
 </script>
