@@ -373,7 +373,8 @@
 	},
 	
 	_centerChanged : function () {
-		this.map.setCenter(this.displayCenter);
+		if(this.map)
+			this.map.setCenter(this.displayCenter);
 	},
 	
 	
