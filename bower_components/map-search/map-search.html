@@ -24,37 +24,9 @@
 			paper-icon-button {
 				color: white;
 			}
-			
-			.controls {
-				margin-top: 10px;
-				border: 1px solid transparent;
-				border-radius: 2px 0 0 2px;
-				box-sizing: border-box;
-				-moz-box-sizing: border-box;
-				height: 32px;
-				outline: none;
-				box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-			}
-
-			#pac-input {
-				background-color: #fff;
-				font-family: Roboto;
-				font-size: 15px;
-				font-weight: 300;
-				margin-left: 12px;
-				padding: 0 11px 0 13px;
-				text-overflow: ellipsis;
-				width: 300px;
-			}
-
-			#pac-input:focus {
-				border-color: #4d90fe;
-			}
-
 		
 		</style>
 
-		<input id="pac-input" class="controls" type="text" placeholder="Search Box" >
 		<div id="wrap">
 			<paper-toolbar id="map_functions">
 			
@@ -141,6 +113,7 @@
 		/*point at which to center map at*/
 		displayCenter : {
 			type : Object,
+			observer : '_centerChanged'
 		},
 		
 		/*default map load*/
@@ -162,12 +135,16 @@
 			type : Number
 		},
 		
+		/*All markers that have been loaded onto the map*/
 		allMarkers : {
 			type : Array,
+			value : []
 		},
 		
+		/*All polys that have been loaded onto the map*/
 		allPolys : {
 			type : Array,
+			value : []
 		},
 		
 		/*if true, beginning to draw a new poly will erase previous polys*/
@@ -188,6 +165,7 @@
 			value : 'http://46.101.211.226:5000/media/assets/theme-vinegret/logo-vinegret-mobile.png'
 		},
 		
+		/*as var name says, percent of height to minimize to when asked to minimize*/
 		percentMinimize : {
 			type : Number,
 			value : 0.5
@@ -203,8 +181,6 @@
 	
 	/*initializes marker and poly arrays*/
 	ready : function() {
-		allMarkers = [];
-		allPolys = [];
 		this.displayCenter = this.defaultCenter;
 		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
 		iconUrl = this.defaultIcon;
@@ -212,81 +188,37 @@
 	
 	/*builds map*/
 	attached : function() {
-		map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
+		this.map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
 		//stores original height for restoring to later
 		originalMapHeight = parseFloat(getComputedStyle(this.$.map_canvas).height);
 		bounds = new google.maps.LatLngBounds();
-		if(allMarkers.length)
-			map.fitBounds(bounds);
+		if(this.allMarkers.length)
+			this.map.fitBounds(bounds);
 		infowindow = new google.maps.InfoWindow({
 			content : 'Hello World!'
 		});
 		
-		this.initializeSearchBox();
+		this.handleLocation();
+	},
+	
+	handleLocation : function () {
+		var that = this;
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(function(position) {
+				var pos = {
+					lat: position.coords.latitude,
+					lng: position.coords.longitude
+				};
+				that.displayCenter = pos;
+				that.map.setCenter(pos);
+			}, function() {
+				console.error('Error: The Geolocation service failed.');
+			});
+        } else {
+			console.error('Error: Your browser doesn\'t support geolocation.')
+        }
+    },
 		
-	},
-	
-	initializeSearchBox : function() {
-		// Create the search box and link it to the UI element.
-        var input = document.getElementById('pac-input');
-        var searchBox = new google.maps.places.SearchBox(input);
-        map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
-
-        // Bias the SearchBox results towards current map's viewport.
-        map.addListener('bounds_changed', function() {
-          searchBox.setBounds(map.getBounds());
-        });
-
-        var markers = [];
-        // Listen for the event fired when the user selects a prediction and retrieve
-        // more details for that place.
-        searchBox.addListener('places_changed', function() {
-          var places = searchBox.getPlaces();
-
-          if (places.length == 0) {
-            return;
-          }
-
-          // Clear out the old markers.
-          markers.forEach(function(marker) {
-            marker.setMap(null);
-          });
-          markers = [];
-
-          // For each place, get the icon, name and location.
-          var bounds = new google.maps.LatLngBounds();
-          places.forEach(function(place) {
-            if (!place.geometry) {
-              console.log("Returned place contains no geometry");
-              return;
-            }
-            var icon = {
-              url: place.icon,
-              size: new google.maps.Size(71, 71),
-              origin: new google.maps.Point(0, 0),
-              anchor: new google.maps.Point(17, 34),
-              scaledSize: new google.maps.Size(25, 25)
-            };
-
-            // Create a marker for each place.
-            markers.push(new google.maps.Marker({
-              map: map,
-              icon: icon,
-              title: place.name,
-              position: place.geometry.location
-            }));
-
-            if (place.geometry.viewport) {
-              // Only geocodes have viewport.
-              bounds.union(place.geometry.viewport);
-            } else {
-              bounds.extend(place.geometry.location);
-            }
-          });
-          map.fitBounds(bounds);
-        });
-	},
-	
 	/*makes a call to server to pull data on markers from it*/
 	loadFromServer : function () {
 		loader = this.$.marker_loader;
@@ -305,12 +237,13 @@
 			object = [object];
 		}
 	
+		var that = this;
 		object.forEach(function(obj){
 			if(!obj.lat || !obj.lng)
 				throw ("Given marker object has no position!");
 			var marker = new google.maps.Marker({
 				position: new google.maps.LatLng(obj.lat, obj.lng),
-				map: map,
+				map: that.map,
 				title: 'Hello World!'
 			});
 			delete obj.lat;
@@ -320,45 +253,45 @@
 				google.maps.event.addListener(marker, 'click', function() {
 					window.location = this.link;
 				});
-			markerInShape(marker);
-			allMarkers.push(marker);
+			that.markerInShape(marker);
+			that.allMarkers.push(marker);
 			bounds.extend(marker.position);
 			if(obj.info)
 				marker.addListener('click', function() {
 					infowindow.setContent(obj.info);
-					infowindow.open(map, marker);
+					infowindow.open(this.map, marker);
 				});
 		});
-		map.fitBounds(bounds);
+		this.map.fitBounds(bounds);
 	},
 	
 	/*free hand drawing of polygons. all markers inside shape marked as selected*/
 	draw : function (ev) {
 		var that = this;
 		ev.preventDefault();
-		disable();
-        google.maps.event.addDomListener(map.getDiv(),'mousedown',function(e){
-			if(that.onePolyActive && allPolys.length)
+		this.disable();
+        google.maps.event.addDomListener(this.map.getDiv(),'mousedown',function(e){
+			if(that.onePolyActive && that.allPolys.length)
 				that.clear(ev);
-            drawFreeHand(markersInShape);
+            that.drawFreeHand();
         });
 		
 	},
 	
 	/*first click, clears away polys. second click, clears away marked icons*/
 	clear : function (ev) {
-		if(allPolys.length){
-			while(allPolys.length)
-				allPolys.pop().setMap(null);
+		if(this.allPolys.length){
+			while(this.allPolys.length)
+				this.allPolys.pop().setMap(null);
 			return;
 		}
 				
-		for(i = 0; i < allMarkers.length; i++){
-			if(allMarkers[i].getIcon()){
-				allMarkers[i].setOptions({
+		for(i = 0; i < this.allMarkers.length; i++){
+			if(this.allMarkers[i].getIcon()){
+				this.allMarkers[i].setOptions({
 					icon: null,
 				});
-				allMarkers[i].selected = false;
+				this.allMarkers[i].selected = false;
 			}
 		}
 			
@@ -368,19 +301,19 @@
 	/*removes all markers that aren't selected*/
 	filter : function (ev) {
 		if(canFilter)
-			for(i = 0; i < allMarkers.length; i++)
-				if(!allMarkers[i].selected)
-					allMarkers[i].setMap(null);
+			for(i = 0; i < this.allMarkers.length; i++)
+				if(!this.allMarkers[i].selected)
+					this.allMarkers[i].setMap(null);
 	},
 	
 	/*restores map to clean icons of all past loaded markers*/
 	reload : function (ev) {
-		if(allPolys.length)
+		if(this.allPolys.length)
 			this.clear(ev);
 		this.clear(ev);
-		for(i = 0; i < allMarkers.length; i++)
-			allMarkers[i].setMap(map);
-		map.fitBounds(bounds);
+		for(i = 0; i < this.allMarkers.length; i++)
+			this.allMarkers[i].setMap(this.map);
+		this.map.fitBounds(bounds);
 		canFilter = false;
 	},
 	
@@ -388,7 +321,7 @@
 	minimize : function (ev) {
 		var minButton = this.$.min_button;
 		var mapCanvas = this.$.map_canvas;
-		this.displayCenter = map.getCenter();
+		this.displayCenter = this.map.getCenter();
 		if(minButton.icon == "expand-less"){
 			mapCanvas.style.height = (originalMapHeight * this.percentMinimize).toString() + "px";
 			minButton.icon = "expand-more";
@@ -399,8 +332,8 @@
 		}
 		var that = this;
 		setTimeout(function() {
-			google.maps.event.trigger(map, 'resize');
-			map.panTo(that.displayCenter);
+			google.maps.event.trigger(that.map, 'resize');
+			that.map.panTo(that.displayCenter);
 		}, parseFloat(getComputedStyle(mapCanvas).transitionDuration) * 1000);
 	},
 	
@@ -408,8 +341,8 @@
 	collapse : function () {
 		var colButton = this.$.collapse_button;
 		var mapCanvas = this.$.map_canvas;
-		if(map.getCenter())
-			this.displayCenter = map.getCenter();
+		if(this.map.getCenter())
+			this.displayCenter = this.map.getCenter();
 		if(colButton.icon == "fullscreen-exit"){
 			mapCanvas.style.height = 0;
 			colButton.icon = "fullscreen";
@@ -421,31 +354,107 @@
 		}
 		var that = this;
 		setTimeout(function() {
-			google.maps.event.trigger(map, 'resize');
-			if(map.getCenter())
-				map.panTo(that.displayCenter);
+			google.maps.event.trigger(that.map, 'resize');
+			if(that.map.getCenter())
+				that.map.panTo(that.displayCenter);
 		}, parseFloat(getComputedStyle(mapCanvas).transitionDuration) * 1000);
 	},
 	
 	clearAll : function () {
-		while(allMarkers.length)
-			allMarkers.pop().setMap(null);
+		while(this.allMarkers.length)
+			this.allMarkers.pop().setMap(null);
 	},
 	
 	_radiusChanged : function () {
 		var circ = new google.maps.Circle();
 		circ.setRadius(this.displayRadius * 1000);
 		circ.setCenter(this.displayCenter);
-		map.fitBounds(circ.getBounds());
-	}
+		this.map.fitBounds(circ.getBounds());
+	},
+	
+	_centerChanged : function () {
+		if(this.map)
+			this.map.setCenter(this.displayCenter);
+	},
+	
+	
+	drawFreeHand : function (){
+
+		//the polygon
+		poly = new google.maps.Polyline({map:this.map,clickable:false});
+		
+		//move-listener
+		var move=google.maps.event.addListener(this.map,'mousemove',function(e){
+			poly.getPath().push(e.latLng);
+		});
+
+		var that = this;
+		//mouseup-listener
+		google.maps.event.addListenerOnce(this.map,'mouseup',function(e){
+			google.maps.event.removeListener(move);
+			var path = poly.getPath();
+			poly.setMap(null);
+			poly = new google.maps.Polygon({ map:that.map, path:path });
+			that.allPolys.push(poly);
+			
+			google.maps.event.clearListeners(that.map.getDiv(), 'mousedown');
+			
+			that.enable()
+			
+			that.markersInShape();
+		});
+	},
+
+	/*disable and enable turn off map functionality for drawing then turn it back on when done*/
+	disable : function(){
+        this.map.setOptions({
+            draggable: false, 
+            zoomControl: false, 
+            scrollwheel: false, 
+            disableDoubleClickZoom: false,
+			clickableIcons: false
+        });
+    },
+    
+	enable : function(){
+        this.map.setOptions({
+            draggable: true, 
+            zoomControl: true, 
+            scrollwheel: true, 
+            disableDoubleClickZoom: true,
+			clickableIcons: true
+        });
+    },
+	
+	/*checks all markers after a new shape is created*/
+	markersInShape : function(){
+		var that = this;
+		this.allMarkers.forEach(function(marker){
+			that.markerInShape(marker);
+		});
+	},
+	
+	/*checks a giver marker against all shapes when it is created*/
+	markerInShape : function(marker){
+		this.allPolys.forEach(function(poly){
+			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
+					marker.setOptions({
+						icon : iconUrl
+					});
+					marker.selected = true;
+					canFilter = true;
+					return;
+				}
+		});
+	}		
 	
 });
     
 	//dummy function to create new marker from set of lat, lng points
 	/*function newMarker(lat, lng) {
-		allMarkers.push(marker = new google.maps.Marker({
+		this.allMarkers.push(marker = new google.maps.Marker({
 			position: new google.maps.LatLng(lat,lng),
-			map: map,
+			map: this.map,
 			title: 'Hello World!'
 		}));
 		bounds.extend(marker.position);
@@ -471,6 +480,7 @@
 		return coords;
 	}
 	
+	/*
 	function drawFreeHand(fooMarkersInShape){
 
 		//the polygon
@@ -487,7 +497,7 @@
 			var path = poly.getPath();
 			poly.setMap(null);
 			poly = new google.maps.Polygon({map:map,path:path});
-			allPolys.push(poly);
+			this.allPolys.push(poly);
 			
 			google.maps.event.clearListeners(map.getDiv(), 'mousedown');
 			
@@ -495,9 +505,10 @@
 			
 			fooMarkersInShape();
 		});
-	}
+	}*/
 
 	/*disable and enable turn off map functionality for drawing then turn it back on when done*/
+	/*
 	function disable(){
         map.setOptions({
             draggable: false, 
@@ -516,15 +527,18 @@
             disableDoubleClickZoom: true,
 			clickableIcons: true
         });
-    }
+    }*/
 	
 	/*checks all markers after a new shape is created*/
+	/*
 	function markersInShape(){
 		for(i = 0; i < allMarkers.length; i++)
 			markerInShape(allMarkers[i]);
 	}
+	*/
 	
 	/*checks a giver marker against all shapes when it is created*/
+	/*
 	function markerInShape(marker){
 		allPolys.forEach(function(poly){
 			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
@@ -536,7 +550,7 @@
 					return;
 				}
 		});
-	}		
+	}		*/
 		
 	</script>
 
