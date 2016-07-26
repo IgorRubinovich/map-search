@@ -95,8 +95,16 @@
 	
 	/*Callback for the API load, once API is loaded, calls true mapInit in */
 	function initialize(){
+		console.log('initializing map');
 		mapsInitialized = true;
-		listeners.forEach(function(listener) { listener() })
+		console.log('listeners', listeners);
+		listeners.forEach(function(listener) { listener() });
+	}
+
+	window.onload = function() {
+		console.log('bruh');
+		initialize();
+		// imports are loaded and elements have been registered
 	}
 	
 	Polymer({
@@ -185,11 +193,6 @@
 		
 	},
 	
-	
-	initialize : function () {
-		console.log("am i called?");
-	},
-	
 	/*initializes marker and poly arrays*/
 	ready : function() {
 		this.displayCenter = this.defaultCenter;
@@ -198,10 +201,14 @@
 	
 	/*builds map*/
 	attached : function() {
+		console.log('attached', mapsInitialized);
+		console.log(this.api);
 		if(mapsInitialized)
 			this.initMap();
-		else	
-			listeners.push(this.initMap.bind(this))
+		else{
+			console.log('else, not initialized');
+			listeners.push(this.initMap.bind(this));
+		}
 	},
 	
 	initMap : function() {
@@ -508,7 +515,7 @@
 	}*/
 		
 	</script>
-	<script src="https://maps.googleapis.com/maps/api/js?keyAIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places&callback=initialize"></script>
 
+	<script src="https://maps.googleapis.com/maps/api/js?keyAIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places&callback=initialize"></script>
 
 </dom-module>
