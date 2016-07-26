@@ -9,7 +9,6 @@
 
 
 <dom-module id="map-search">
-	<script src="https://maps.googleapis.com/maps/api/js?keyAIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places"></script>
 
 	<template>
 		<style>
@@ -91,6 +90,15 @@
 
 	
   <script>
+	
+	var mapsInitialized, listeners = [];
+	
+	/*Callback for the API load, once API is loaded, calls true mapInit in */
+	function initialize(){
+		mapsInitialized = true;
+		listeners.forEach(function(listener) { listener() })
+	}
+	
 	Polymer({
 	is: 'map-search',
 
@@ -120,7 +128,6 @@
 			type : Object,
 			value : {
 				zoom: 17,
-				mapTypeId: google.maps.MapTypeId.ROADMAP
 			}
 		},
 		
@@ -178,15 +185,27 @@
 		
 	},
 	
+	
+	initialize : function () {
+		console.log("am i called?");
+	},
+	
 	/*initializes marker and poly arrays*/
 	ready : function() {
 		this.displayCenter = this.defaultCenter;
-		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
 		iconUrl = this.defaultIcon;
 	},
 	
 	/*builds map*/
 	attached : function() {
+		if(mapsInitialized)
+			this.initMap();
+		else	
+			listeners.push(this.initMap.bind(this))
+	},
+	
+	initMap : function() {
+		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
 		this.map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
 		//stores original height for restoring to later
 		originalMapHeight = parseFloat(getComputedStyle(this.$.map_canvas).height);
@@ -198,6 +217,9 @@
 		});
 		
 		this.handleLocation();
+		
+		this.addNeswPrototype();
+		
 	},
 	
 	handleLocation : function () {
@@ -217,6 +239,26 @@
 			console.error('Error: Your browser doesn\'t support geolocation.')
         }
     },
+	
+	addNeswPrototype : function () {
+		google.maps.Polygon.prototype.getNESW = function() {
+			var bounds = new google.maps.LatLngBounds();
+			var paths = this.getPaths();
+			for (var i = 0; i < paths.getLength(); i++) {
+				var path = paths.getAt(i);
+				for (var j = 0; j < path.getLength(); j++) {
+					bounds.extend(path.getAt(j));
+				}
+			}
+			var coords = {
+				north:	bounds.getNorthEast().toJSON().lat,
+				east:	bounds.getNorthEast().toJSON().lng,
+				south:	bounds.getSouthWest().toJSON().lat,
+				west:	bounds.getSouthWest().toJSON().lng
+			};
+			return coords;
+		}
+	},
 		
 	/*makes a call to server to pull data on markers from it*/
 	loadFromServer : function () {
@@ -376,9 +418,7 @@
 			this.map.setCenter(this.displayCenter);
 	},
 	
-	
 	drawFreeHand : function (){
-
 		//the polygon
 		poly = new google.maps.Polyline({map:this.map,clickable:false});
 		
@@ -395,7 +435,6 @@
 			poly.setMap(null);
 			poly = new google.maps.Polygon({ map:that.map, path:path });
 			that.allPolys.push(poly);
-			
 			google.maps.event.clearListeners(that.map.getDiv(), 'mousedown');
 			
 			that.enable()
@@ -448,20 +487,9 @@
 	}		
 	
 });
-    
-	//dummy function to create new marker from set of lat, lng points
-	/*function newMarker(lat, lng) {
-		this.allMarkers.push(marker = new google.maps.Marker({
-			position: new google.maps.LatLng(lat,lng),
-			map: this.map,
-			title: 'Hello World!'
-		}));
-		bounds.extend(marker.position);
-	}*/
-	
 	/* adds function to prototype of a maps polygon.
 	 * RETURN: north, east, south, and west bounds of the polygon, as an object*/
-	google.maps.Polygon.prototype.getNESW = function() {
+	/*google.maps.Polygon.prototype.getNESW = function() {
 		var bounds = new google.maps.LatLngBounds();
 		var paths = this.getPaths();
 		for (var i = 0; i < paths.getLength(); i++) {
@@ -477,80 +505,10 @@
 			west:	bounds.getSouthWest().toJSON().lng
 		};
 		return coords;
-	}
-	
-	/*
-	function drawFreeHand(fooMarkersInShape){
-
-		//the polygon
-		poly = new google.maps.Polyline({map:map,clickable:false});
-		
-		//move-listener
-		var move=google.maps.event.addListener(map,'mousemove',function(e){
-			poly.getPath().push(e.latLng);
-		});
-		
-		//mouseup-listener
-		google.maps.event.addListenerOnce(map,'mouseup',function(e){
-			google.maps.event.removeListener(move);
-			var path = poly.getPath();
-			poly.setMap(null);
-			poly = new google.maps.Polygon({map:map,path:path});
-			this.allPolys.push(poly);
-			
-			google.maps.event.clearListeners(map.getDiv(), 'mousedown');
-			
-			enable()
-			
-			fooMarkersInShape();
-		});
 	}*/
-
-	/*disable and enable turn off map functionality for drawing then turn it back on when done*/
-	/*
-	function disable(){
-        map.setOptions({
-            draggable: false, 
-            zoomControl: false, 
-            scrollwheel: false, 
-            disableDoubleClickZoom: false,
-			clickableIcons: false
-        });
-    }
-    
-    function enable(){
-        map.setOptions({
-            draggable: true, 
-            zoomControl: true, 
-            scrollwheel: true, 
-            disableDoubleClickZoom: true,
-			clickableIcons: true
-        });
-    }*/
-	
-	/*checks all markers after a new shape is created*/
-	/*
-	function markersInShape(){
-		for(i = 0; i < allMarkers.length; i++)
-			markerInShape(allMarkers[i]);
-	}
-	*/
-	
-	/*checks a giver marker against all shapes when it is created*/
-	/*
-	function markerInShape(marker){
-		allPolys.forEach(function(poly){
-			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
-					marker.setOptions({
-						icon : iconUrl
-					});
-					marker.selected = true;
-					canFilter = true;
-					return;
-				}
-		});
-	}		*/
 		
 	</script>
+	<script src="https://maps.googleapis.com/maps/api/js?keyAIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places&callback=initialize"></script>
+
 
 </dom-module>
