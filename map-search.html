@@ -14,9 +14,9 @@
 		<style>
 		
 			#map_canvas{
-				height: 600px;
+				height: 450px;
 				width: 100%;
-				transition: height 500ms;
+				transition: height 200ms;
 			}
 			
 			paper-icon-button {
@@ -27,7 +27,7 @@
 
 		<div id="wrap">
 			<paper-toolbar id="map_functions">
-			
+				<span class="title">Classifieds</span>
 				<div id="draw">
 					<a href="#" on-click="draw" target="_self" tabindex="-1">
 						<paper-icon-button id="draw_icon" icon="create"></paper-icon-button>
@@ -48,9 +48,9 @@
 						<paper-icon-button icon="refresh"></paper-icon-button>
 					</a>
 				</div>
-				<div>
-					<a href="#" on-click="loadFromServer" target="_self" tabindex="-1">
-						<paper-icon-button icon="cloud-download"></paper-icon-button>
+				<div id="clear_all">
+					<a href="#" on-click="clearAll" target="_self" tabindex="-1">
+						<paper-icon-button icon="highlight-off" id="clear_all_button"></paper-icon-button>
 					</a>
 				</div>
 				<div id="minimize">
@@ -61,11 +61,6 @@
 				<div id="collapse">
 					<a href="#" on-click="collapse" target="_self" tabindex="-1">
 						<paper-icon-button icon="fullscreen-exit" id="collapse_button"></paper-icon-button>
-					</a>
-				</div>
-				<div id="clear_all">
-					<a href="#" on-click="clearAll" target="_self" tabindex="-1">
-						<paper-icon-button icon="highlight-off" id="clear_all_button"></paper-icon-button>
 					</a>
 				</div>
 				
@@ -238,6 +233,7 @@
 					lng: position.coords.longitude
 				};
 				that.displayCenter = pos;
+				that.displayRadius = 1.5;
 				that.map.setCenter(pos);
 			}, function() {
 				console.error('Error: The Geolocation service failed.');
@@ -283,8 +279,11 @@
 	newMarker : function(object) {
 		if(!object instanceof Array){
 			object = [object];
+			console.log('did i get made into an array?');
 		}
-	
+		
+		console.log(object);
+		
 		var that = this;
 		object.forEach(function(obj){
 			if(!obj.lat || !obj.lng)
@@ -292,7 +291,7 @@
 			var marker = new google.maps.Marker({
 				position: new google.maps.LatLng(obj.lat, obj.lng),
 				map: that.map,
-				title: 'Hello World!'
+				title: obj.title || 'Hello World!'
 			});
 			delete obj.lat;
 			delete obj.lng;
@@ -361,7 +360,12 @@
 		this.clear(ev);
 		for(i = 0; i < this.allMarkers.length; i++)
 			this.allMarkers[i].setMap(this.map);
-		this.map.fitBounds(bounds);
+		if(this.allMarkers.length)
+			this.map.fitBounds(bounds);
+		else{
+			this.map.setCenter(this.displayCenter);
+			this.map.setRadius(this.displayRadius);
+		}
 		canFilter = false;
 	},
 	
@@ -516,6 +520,6 @@
 		
 	</script>
 
-	<script src="https://maps.googleapis.com/maps/api/js?keyAIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places&callback=initialize"></script>
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places&callback=initialize"></script>
 
 </dom-module>
