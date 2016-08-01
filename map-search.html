@@ -28,7 +28,7 @@
 
 		<div id="wrap">
 			<paper-toolbar id="map_functions">
-				<span class="title">Classifieds</span>
+				<span class="title" id="map_title"></span>
 				<div id="draw">
 					<a href="#" on-click="draw" target="_self" tabindex="-1">
 						<paper-icon-button id="draw_icon" icon="create"></paper-icon-button>
@@ -67,10 +67,10 @@
 		<google-maps-api id="map-search_api" api-key="AIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE" version="3.exp" on-api-load="initMap"></google-maps-api>
 		
 		<iron-ajax
-			id="marker_loader"
-			handle-as="json"
+			id="widget_loader"
+			handle-as="text"
 			debounce-duration="300"
-			on-response="itemsLoaded"
+			on-response="widgetLoaded"
 			last-response="{{ items }}"
 			last-error="{{ lastError }}"
 			verbose=true
@@ -87,6 +87,8 @@
 
 	properties : {
 		map : { type: Object },
+		
+		infowindow : {type: Object},
 		
 		/*default center of the map*/
 		defaultCenter : {
@@ -138,27 +140,21 @@
 		percentMinimize : { type : Number, value : 0.5 },
 		
 		/*does there exist something to filter out against so we don't filter everything*/
-		canFilter : { type : Boolean, value : false }
+		canFilter : { type : Boolean, value : false },
+		
+		template : { type : String, observer : '_templateChanged' }
 		
 	},
 	
-	/*initializes marker and poly arrays*/
+	_templateChanged : function () {
+		this.$.map_title.textContent = this.template.charAt(0).toUpperCase() + this.template.slice(1);;
+	},
+	
 	ready : function() {
-		/*var mapsAPI = document.querySelector('#map-search_api');
-		mapsAPI.addEventListener('api-load', function(e) {
-			// this.api === google.maps
-			this.initMap();
-		}.bind(this));*/
-		
 	},
 	
-	/*builds map*/
 	attached : function() {
-		if(mapsInitialized)
-			this.initMap();
-		else{
-			listeners.push(this.initMap.bind(this));
-		}
+	
 	},
 	
 	initMap : function() {
@@ -171,7 +167,7 @@
 		bounds = new google.maps.LatLngBounds();
 		if(this.allMarkers.length)
 			this.map.fitBounds(bounds);
-		infowindow = new google.maps.InfoWindow({
+		this.infowindow = new google.maps.InfoWindow({
 			content : 'Hello World!'
 		});
 		
@@ -199,47 +195,41 @@
 			console.error('Error: Your browser doesn\'t support geolocation.')
         }
     },
-		
-	/*called when loader's request is responded. builds markers from the data*/
-	itemsLoaded : function () {
-		this.newMarker(loader.lastResponse);
-	},
 	
 	/*creates a new marker from an object or array of objects containing marker options*/
 	newMarker : function(object) {
-		if(!object instanceof Array){
+		if(!(object instanceof Array))
 			object = [object];
-			console.log('did i get made into an array?');
-		}
 		
-		console.log(object);
-		
-		var that = this;
 		object.forEach(function(obj){
-			if(!obj.lat || !obj.lng)
+			if(!obj.position)
 				throw ("Given marker object has no position!");
-			var marker = new google.maps.Marker({
-				position: new google.maps.LatLng(obj.lat, obj.lng),
-				map: that.map,
-				title: obj.title || 'Hello World!'
-			});
-			delete obj.lat;
-			delete obj.lng;
+			var marker = new google.maps.Marker({ map: this.map });
 			marker.setOptions(obj)
-			if(marker.link && 0)
-				google.maps.event.addListener(marker, 'click', function() {
-					window.location = this.link;
-				});
-			that.markerInShape(marker);
-			that.allMarkers.push(marker);
+			this.markerInShape(marker);
+			this.allMarkers.push(marker);
 			bounds.extend(marker.position);
-			if(obj.info)
+			
+			if(this.template)
 				marker.addListener('click', function() {
-					infowindow.setContent(obj.info);
-					infowindow.open(this.map, marker);
-				});
-		});
+					var widgetUrl = '/' + this.template + '/partial/' + obj.id + '/widget/';
+					this.fire('icon-click', widgetUrl);
+					var loader = this.$.widget_loader;
+					loader.url = widgetUrl;
+					loader.generateRequest();
+					this.infowindow.setContent('<paper-spinner alt="Loading widget" active></paper-spinner>');
+					this.infowindow.open(this.map, marker);
+				}.bind(this));
+		}.bind(this));
+		
 		this.map.fitBounds(bounds);
+	},
+	
+	widgetLoaded : function (ev) {
+		var loader = this.$.widget_loader;
+		console.log(loader.lastResponse);
+		
+		this.infowindow.setContent(loader.lastResponse);
 	},
 	
 	/*free hand drawing of polygons. all markers inside shape marked as selected*/
@@ -425,6 +415,27 @@
 					return;
 				}
 		});
+	},
+	
+	loadClassified : function(res) {
+		var markers = [];
+		var geocoder = new google.maps.Geocoder;
+		res.forEach(function(obj){
+			var position;
+			var marker = { id : obj.id };
+			geocoder.geocode({'placeId': obj.geo.place_id}, function(results, status) {
+				if (status === 'OK') {
+					if (results[0]){
+						marker.position = results[0].geometry.location;
+						markers.push(marker);
+						if(markers.length == res.length)
+							this.newMarker(markers);
+					}else
+						console.error('No geocode results found for given object:', obj);
+				} else
+					console.log('Geocoder failed due to: ' + status);
+			}.bind(this));
+		}.bind(this));
 	},
 	
 	/* adds function to prototype of a maps polygon.
