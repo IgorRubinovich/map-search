@@ -4,6 +4,7 @@
 <link rel="import" href="../../bower_components/paper-toolbar/paper-toolbar.html">
 <link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
 <link rel="import" href="../../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../../bower_components/google-apis/google-apis.html">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
       rel="stylesheet">
 
@@ -48,11 +49,6 @@
 						<paper-icon-button icon="refresh"></paper-icon-button>
 					</a>
 				</div>
-				<div id="clear_all">
-					<a href="#" on-click="clearAll" target="_self" tabindex="-1">
-						<paper-icon-button icon="highlight-off" id="clear_all_button"></paper-icon-button>
-					</a>
-				</div>
 				<div id="minimize">
 					<a href="#"  on-click="minimize" target="_self" tabindex="-1">
 						<paper-icon-button icon="expand-less" id="min_button"></paper-icon-button>
@@ -64,10 +60,11 @@
 					</a>
 				</div>
 				
-				
 			</paper-toolbar>
 		</div>	
 		<div id="map_canvas"></div>
+		
+		<google-maps-api api-key="AIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE" version="3.exp"></google-maps-api>
 		
 		<iron-ajax
 			id="marker_loader"
@@ -79,36 +76,17 @@
 			verbose=true
 		></iron-ajax>
 		
-		
 	</template>
-
-
 	
   <script>
 	
 	var mapsInitialized, listeners = [];
 	
-	/*Callback for the API load, once API is loaded, calls true mapInit in */
-	function initialize(){
-		console.log('initializing map');
-		mapsInitialized = true;
-		console.log('listeners', listeners);
-		listeners.forEach(function(listener) { listener() });
-	}
-
-	window.onload = function() {
-		console.log('bruh');
-		initialize();
-		// imports are loaded and elements have been registered
-	}
-	
 	Polymer({
 	is: 'map-search',
 
 	properties : {
-		map : {
-			type: Object
-		},
+		map : { type: Object },
 		
 		/*default center of the map*/
 		defaultCenter : {
@@ -140,34 +118,16 @@
 			observer : '_radiusChanged'
 		},
 		
-		originalMapHeight : {
-			type : Number
-		},
+		originalMapHeight : { type : Number },
 		
 		/*All markers that have been loaded onto the map*/
-		allMarkers : {
-			type : Array,
-			value : []
-		},
+		allMarkers : { type : Array, value : [] },
 		
 		/*All polys that have been loaded onto the map*/
-		allPolys : {
-			type : Array,
-			value : []
-		},
+		allPolys : { type : Array, value : [] },
 		
 		/*if true, beginning to draw a new poly will erase previous polys*/
-		onePolyActive : {
-			type : Boolean,
-			value : true,
-			readOnly : true
-		},
-		
-		/*url to pull marker data from*/
-		dataServer : {
-			type : String,
-			value : 'http://localhost:4000'
-		},
+		onePolyActive : { type : Boolean, value : true, readOnly : true },
 		
 		defaultIcon : {
 			type : String,
@@ -175,38 +135,35 @@
 		},
 		
 		/*as var name says, percent of height to minimize to when asked to minimize*/
-		percentMinimize : {
-			type : Number,
-			value : 0.5
-		},
+		percentMinimize : { type : Number, value : 0.5 },
 		
 		/*does there exist something to filter out against so we don't filter everything*/
-		canFilter : {
-			type : Boolean,
-			value : false,
-		}
+		canFilter : { type : Boolean, value : false }
 		
 	},
 	
 	/*initializes marker and poly arrays*/
 	ready : function() {
-		this.displayCenter = this.defaultCenter;
-		iconUrl = this.defaultIcon;
+		var mapsAPI = document.querySelector('google-maps-api');
+		mapsAPI.addEventListener('api-load', function(e) {
+			// this.api === google.maps
+			this.initMap();
+		}.bind(this));
+		
 	},
 	
 	/*builds map*/
 	attached : function() {
-		console.log('attached', mapsInitialized);
-		console.log(this.api);
 		if(mapsInitialized)
 			this.initMap();
 		else{
-			console.log('else, not initialized');
 			listeners.push(this.initMap.bind(this));
 		}
 	},
 	
 	initMap : function() {
+		this.displayCenter = this.defaultCenter;
+		iconUrl = this.defaultIcon;
 		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
 		this.map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
 		//stores original height for restoring to later
@@ -242,34 +199,7 @@
 			console.error('Error: Your browser doesn\'t support geolocation.')
         }
     },
-	
-	addNeswPrototype : function () {
-		google.maps.Polygon.prototype.getNESW = function() {
-			var bounds = new google.maps.LatLngBounds();
-			var paths = this.getPaths();
-			for (var i = 0; i < paths.getLength(); i++) {
-				var path = paths.getAt(i);
-				for (var j = 0; j < path.getLength(); j++) {
-					bounds.extend(path.getAt(j));
-				}
-			}
-			var coords = {
-				north:	bounds.getNorthEast().toJSON().lat,
-				east:	bounds.getNorthEast().toJSON().lng,
-				south:	bounds.getSouthWest().toJSON().lat,
-				west:	bounds.getSouthWest().toJSON().lng
-			};
-			return coords;
-		}
-	},
 		
-	/*makes a call to server to pull data on markers from it*/
-	loadFromServer : function () {
-		loader = this.$.marker_loader;
-		loader.url = this.dataServer;
-		loader.generateRequest();
-	},
-	
 	/*called when loader's request is responded. builds markers from the data*/
 	itemsLoaded : function () {
 		this.newMarker(loader.lastResponse);
@@ -495,31 +425,32 @@
 					return;
 				}
 		});
-	}		
+	},
 	
-});
 	/* adds function to prototype of a maps polygon.
 	 * RETURN: north, east, south, and west bounds of the polygon, as an object*/
-	/*google.maps.Polygon.prototype.getNESW = function() {
-		var bounds = new google.maps.LatLngBounds();
-		var paths = this.getPaths();
-		for (var i = 0; i < paths.getLength(); i++) {
-			var path = paths.getAt(i);
-			for (var j = 0; j < path.getLength(); j++) {
-				bounds.extend(path.getAt(j));
+	addNeswPrototype : function () {
+		google.maps.Polygon.prototype.getNESW = function() {
+			var bounds = new google.maps.LatLngBounds();
+			var paths = this.getPaths();
+			for (var i = 0; i < paths.getLength(); i++) {
+				var path = paths.getAt(i);
+				for (var j = 0; j < path.getLength(); j++) {
+					bounds.extend(path.getAt(j));
+				}
 			}
+			var coords = {
+				north:	bounds.getNorthEast().toJSON().lat,
+				east:	bounds.getNorthEast().toJSON().lng,
+				south:	bounds.getSouthWest().toJSON().lat,
+				west:	bounds.getSouthWest().toJSON().lng
+			};
+			return coords;
 		}
-		var coords = {
-			north:	bounds.getNorthEast().toJSON().lat,
-			east:	bounds.getNorthEast().toJSON().lng,
-			south:	bounds.getSouthWest().toJSON().lat,
-			west:	bounds.getSouthWest().toJSON().lng
-		};
-		return coords;
-	}*/
+	}
+	
+});
 		
 	</script>
-
-	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE&v=3.exp&sensor=false&.js&libraries=geometry,places&callback=initialize"></script>
 
 </dom-module>
