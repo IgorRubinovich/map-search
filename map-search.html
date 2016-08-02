@@ -39,11 +39,6 @@
 						<paper-icon-button icon="clear"></paper-icon-button>
 					</a>
 				</div>
-				<div id="filter">
-					<a href="#" on-click="filter" target="_self" tabindex="-1">
-						<paper-icon-button icon="filter-list"></paper-icon-button>
-					</a>
-				</div>
 				<div id="reload"> 
 					<a href="#" on-click="reload" target="_self" tabindex="-1">
 						<paper-icon-button icon="refresh"></paper-icon-button>
@@ -150,12 +145,9 @@
 		this.$.map_title.textContent = this.template.charAt(0).toUpperCase() + this.template.slice(1);;
 	},
 	
-	ready : function() {
-	},
+	ready : function() { },
 	
-	attached : function() {
-	
-	},
+	attached : function() { },
 	
 	initMap : function() {
 		this.displayCenter = this.defaultCenter;
@@ -206,7 +198,6 @@
 				throw ("Given marker object has no position!");
 			var marker = new google.maps.Marker({ map: this.map });
 			marker.setOptions(obj)
-			this.markerInShape(marker);
 			this.allMarkers.push(marker);
 			bounds.extend(marker.position);
 			
@@ -221,7 +212,8 @@
 					this.infowindow.open(this.map, marker);
 				}.bind(this));
 		}.bind(this));
-		
+		this.markersInShape();
+
 		this.map.fitBounds(bounds);
 	},
 	
@@ -234,14 +226,13 @@
 	
 	/*free hand drawing of polygons. all markers inside shape marked as selected*/
 	draw : function (ev) {
-		var that = this;
 		ev.preventDefault();
 		this.disable();
         google.maps.event.addDomListener(this.map.getDiv(),'mousedown',function(e){
-			if(that.onePolyActive && that.allPolys.length)
-				that.clear(ev);
-            that.drawFreeHand();
-        });
+			if(this.onePolyActive && this.allPolys.length)
+				this.clear(ev);
+            this.drawFreeHand();
+        }.bind(this));
 		
 	},
 	
@@ -250,6 +241,7 @@
 		if(this.allPolys.length){
 			while(this.allPolys.length)
 				this.allPolys.pop().setMap(null);
+			canFilter = false;
 			return;
 		}
 				
@@ -261,8 +253,6 @@
 				this.allMarkers[i].selected = false;
 			}
 		}
-			
-		canFilter = false;
 	},
 	
 	/*removes all markers that aren't selected*/
@@ -364,14 +354,14 @@
 			google.maps.event.removeListener(move);
 			var path = poly.getPath();
 			poly.setMap(null);
-			poly = new google.maps.Polygon({ map:that.map, path:path });
-			that.allPolys.push(poly);
-			google.maps.event.clearListeners(that.map.getDiv(), 'mousedown');
+			poly = new google.maps.Polygon({ map:this.map, path:path });
+			this.allPolys.push(poly);
+			google.maps.event.clearListeners(this.map.getDiv(), 'mousedown');
 			
-			that.enable()
+			this.enable()
 			
-			that.markersInShape();
-		});
+			this.markersInShape();
+		}.bind(this));
 	},
 
 	/*disable and enable turn off map functionality for drawing then turn it back on when done*/
@@ -397,10 +387,10 @@
 	
 	/*checks all markers after a new shape is created*/
 	markersInShape : function(){
-		var that = this;
 		this.allMarkers.forEach(function(marker){
-			that.markerInShape(marker);
-		});
+			this.markerInShape(marker);
+		}.bind(this));
+		this.filter();
 	},
 	
 	/*checks a giver marker against all shapes when it is created*/
