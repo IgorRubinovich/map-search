@@ -137,7 +137,12 @@
 		/*does there exist something to filter out against so we don't filter everything*/
 		canFilter : { type : Boolean, value : false },
 		
-		template : { type : String, observer : '_templateChanged' }
+		template : { type : String, observer : '_templateChanged' },
+		
+		itemIds : {
+			type : Array,
+			notify : true
+		}
 		
 	},
 	
@@ -151,7 +156,6 @@
 	
 	initMap : function() {
 		this.displayCenter = this.defaultCenter;
-		iconUrl = this.defaultIcon;
 		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
 		this.map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
 		//stores original height for restoring to later
@@ -206,11 +210,12 @@
 					this.fire('icon-click', widgetUrl);
 					var loader = this.$.widget_loader;
 					loader.url = widgetUrl;
-					loader.generateRequest();
 					this.infowindow.setContent('<paper-spinner alt="Loading widget" active></paper-spinner>');
+					loader.generateRequest();
 					this.infowindow.open(this.map, marker);
 				}.bind(this));
 		}.bind(this));
+
 		this.markersInShape();
 
 		this.map.fitBounds(bounds);
@@ -218,7 +223,6 @@
 	
 	widgetLoaded : function (ev) {
 		var loader = this.$.widget_loader;
-		console.log(loader.lastResponse);
 		
 		this.infowindow.setContent(loader.lastResponse);
 	},
@@ -232,7 +236,6 @@
 				this.clear(ev);
             this.drawFreeHand();
         }.bind(this));
-		
 	},
 	
 	/*first click, clears away polys. second click, clears away marked icons*/
@@ -240,7 +243,7 @@
 		if(this.allPolys.length){
 			while(this.allPolys.length)
 				this.allPolys.pop().setMap(null);
-			canFilter = false;
+			this.canFilter = false;
 			return;
 		}
 				
@@ -256,10 +259,16 @@
 	
 	/*removes all markers that aren't selected*/
 	filter : function (ev) {
-		if(canFilter)
-			for(i = 0; i < this.allMarkers.length; i++)
-				if(!this.allMarkers[i].selected)
-					this.allMarkers[i].setMap(null);
+		if(!this.canFilter)
+			return;
+		var ids = [];
+		for(i = 0; i < this.allMarkers.length; i++){
+			if(!this.allMarkers[i].selected)
+				this.allMarkers[i].setMap(null);
+			else 
+				ids.push(this.allMarkers[i].id)
+		}
+		this.set('itemIds', ids);
 	},
 	
 	/*restores map to clean icons of all past loaded markers*/
@@ -275,7 +284,7 @@
 			this.map.setCenter(this.displayCenter);
 			this.map.setRadius(this.displayRadius);
 		}
-		canFilter = false;
+		this.canFilter = false;
 	},
 	
 	/*minimizes height of map as specified by percentMinimize*/
@@ -355,7 +364,7 @@
 			google.maps.event.clearListeners(this.map.getDiv(), 'mousedown');
 			
 			this.enable()
-			
+			this.canFilter = true;
 			this.markersInShape();
 		}.bind(this));
 	},
@@ -394,21 +403,23 @@
 		this.allPolys.forEach(function(poly){
 			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
 					marker.setOptions({
-						icon : iconUrl
+						icon : this.defaultIcon || ''
 					});
 					marker.selected = true;
-					canFilter = true;
 					return;
 				}
 		});
 	},
 	
 	loadClassified : function(res) {
+		this.clearAll();
 		var markers = [];
+		var ids = []; 
 		var geocoder = new google.maps.Geocoder;
 		res.forEach(function(obj){
 			var position;
 			var marker = { id : obj.id };
+			ids.push(obj.id);
 			geocoder.geocode({'placeId': obj.geo.place_id}, function(results, status) {
 				if (status === 'OK') {
 					if (results[0]){
@@ -419,9 +430,10 @@
 					}else
 						console.error('No geocode results found for given object:', obj);
 				} else
-					console.log('Geocoder failed due to: ' + status);
+					console.error('Geocoder failed due to: ' + status);
 			}.bind(this));
 		}.bind(this));
+		this.set('itemIds', ids);
 	},
 	
 	/* adds function to prototype of a maps polygon.
