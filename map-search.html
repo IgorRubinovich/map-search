@@ -1,3 +1,7 @@
+
+<script src="./marker-clusterer/markerclusterer.js"></script>
+
+
 <link rel="import" href="../../bower_components/polymer/polymer.html">
 <link rel="import" href="../../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../../bower_components/iron-ajax/iron-ajax.html">
@@ -13,60 +17,73 @@
 
 	<template>
 		<style>
-		
 			#map_canvas{
 				height: 450px;
 				width: 100%;
 				transition: height 200ms;
 			}
 			
-			paper-icon-button {
+			/*paper-icon-button {
 				color: white;
+			}*/
+			
+			#buttons { 
+				position : absolute;
+				z-index : 100;
+				height : 24px;
+				top : 0;
+				right : 0;
+				width : 100px;
+				xwidth : 100%; 
+			}
+			
+			#wrapper { 
+				position : relative;
+				width : 100%;
+				
 			}
 		
 		</style>
 
-		<div id="wrap">
-			<paper-toolbar id="map_functions">
-				<span class="title" id="map_title"></span>
-				<div id="draw">
-					<a href="#" on-click="draw" target="_self" tabindex="-1">
-						<paper-icon-button id="draw_icon" icon="create"></paper-icon-button>
-					</a>
-				</div>
-				<div id="clear">
-					<a href="#" on-click="clear" target="_self" tabindex="-1">
-						<paper-icon-button icon="clear"></paper-icon-button>
-					</a>
-				</div>
-				<div id="reload"> 
-					<a href="#" on-click="reload" target="_self" tabindex="-1">
-						<paper-icon-button icon="refresh"></paper-icon-button>
-					</a>
-				</div>
-				<div id="minimize">
-					<a href="#"  on-click="minimize" target="_self" tabindex="-1">
-						<paper-icon-button icon="expand-less" id="min_button"></paper-icon-button>
-					</a>
-				</div>
-				<div id="collapse">
-					<a href="#" on-click="collapse" target="_self" tabindex="-1">
-						<paper-icon-button icon="fullscreen-exit" id="collapse_button"></paper-icon-button>
-					</a>
-				</div>
-				
-			</paper-toolbar>
-		</div>	
-		<div id="map_canvas"></div>
-		
-		<google-maps-api id="map-search_api" api-key="AIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE" version="3.exp" on-api-load="initMap"></google-maps-api>
-		
+		<div id="wrapper">
+			<div id="buttons">
+				<paper-icon-button on-click="clear" icon="clear"></paper-icon-button>
+				<paper-icon-button on-click="draw" id="draw_icon" icon="create"></paper-icon-button>
+
+				<!-- paper-toolbar id="map_functions">
+					<span class="title" id="map_title"></span>
+					<div id="draw">
+						<paper-icon-button on-click="draw" id="draw_icon" icon="create"></paper-icon-button>
+					</div>
+
+					<div id="reload"> 
+						<paper-icon-button on-click="reload" icon="refresh"></paper-icon-button>
+					</div>
+					<div id="minimize">
+						<paper-icon-button on-click="minimize" icon="expand-less" id="min_button"></paper-icon-button>
+					</div>
+					<div id="collapse">
+						<paper-icon-button on-click="collapse" icon="fullscreen-exit" id="collapse_button"></paper-icon-button>
+					</div>
+					
+				</paper-toolbar -->
+			</div>	
+			<div id="map_canvas"></div>
+		</div>
+		<google-maps-api
+			id="map-search_api" 
+			api-key="AIzaSyBbbTEqaAjcWVDdrIpwlS-0Tl4CTheJThE" 
+			version="3.exp" 
+			on-api-load="initMap"
+			language="[[ language ]]"
+			>
+		</google-maps-api>
+
 		<iron-ajax
 			id="widget_loader"
 			handle-as="text"
 			debounce-duration="300"
 			on-response="widgetLoaded"
-			last-response="{{ items }}"
 			last-error="{{ lastError }}"
 			verbose=true
 		></iron-ajax>
@@ -82,34 +99,34 @@
 
 	properties : {
 		map : { type: Object },
-		
-		infowindow : {type: Object},
+		infoWindow : { type: Object },
 		
 		/*default center of the map*/
 		defaultCenter : {
 			type : Object,
-			value : {
-				lat:50.0755,
-				lng:14.4378
-			},
+			// Prague
+			value : { lat : 50.0755, lng : 14.4378 },
 			readOnly: true
 		},
 		
-		/*point at which to center map at*/
+		/*default map load*/
+		defaultMapOptions : { type : Object, value : function() { return { zoom: 13 }} },
+		
+		radius : { type : Number, notify : true },		
+		center : { type : Object, notify : true },
+		
+		centerLocation : { type : Object, notify : true, observer : "_centerLocation" },
+		language : { type : String, value : "", notify : true, observer : "_centerLocation" },
+		
+		/*point at which to center map */
+		/*Will be given by user, sets map zoom to fit bounds of circle of radius in km*/
+/*
 		displayCenter : {
 			type : Object,
 			observer : '_centerChanged'
 		},
 		
-		/*default map load*/
-		defaultMapOptions : {
-			type : Object,
-			value : {
-				zoom: 17,
-			}
-		},
-		
-		/*Will be given by user, sets map zoom to fit bounds of circle of radius in km*/
+
 		displayRadius : {
 			type : Number,
 			observer : '_radiusChanged'
@@ -128,7 +145,7 @@
 		
 		defaultIcon : {
 			type : String,
-			value : 'http://46.101.211.226:5000/media/assets/theme-vinegret/logo-vinegret-mobile.png'
+			value : 'data:image/png;base64,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'
 		},
 		
 		/*as var name says, percent of height to minimize to when asked to minimize*/
@@ -137,42 +154,118 @@
 		/*does there exist something to filter out against so we don't filter everything*/
 		canFilter : { type : Boolean, value : false },
 		
-		template : { type : String, observer : '_templateChanged' },
-		
+		itemUrlTemplate : { type : String },
+
 		itemIds : {
 			type : Array,
 			notify : true
-		}
+		},
 		
+		items : { 
+			type : Array,
+			notify : true,
+		},
+		
+		itemsInShape : { 
+			type : Array,
+			notify : true,
+		},
+		
+		isAttached : { 
+			type : Boolean,
+			notify : true
+		},
+		isMapReady : { 
+			type : Boolean,
+			notify : true
+		},
+		isWorking : { 
+			type : Boolean,
+			notify : true
+		}
 	},
 	
-	_templateChanged : function () {
-		this.$.map_title.textContent = this.template.charAt(0).toUpperCase() + this.template.slice(1);;
-	},
+	observers : ["_itemsChanged(items.*)","_itemsInShapeChanged(isAttached,isMapReady,itemsInShape.*)"],
 	
 	ready : function() { },
 	
-	attached : function() { },
+	attached : function() { 
+		this.set("isAttached", true);
+	},
 	
 	initMap : function() {
 		this.displayCenter = this.defaultCenter;
+		
 		this.defaultMapOptions.center = new google.maps.LatLng(this.displayCenter);
+		
 		this.map = new google.maps.Map(this.$.map_canvas, this.defaultMapOptions);
 		//stores original height for restoring to later
+		
 		originalMapHeight = parseFloat(getComputedStyle(this.$.map_canvas).height);
+		
 		bounds = new google.maps.LatLngBounds();
+		
 		if(this.allMarkers.length)
 			this.map.fitBounds(bounds);
-		this.infowindow = new google.maps.InfoWindow({
-			content : 'Hello World!'
+
+		this.infoWindow = new google.maps.InfoWindow({
+			content : 'Hello World!',
+			disableAutoPan : true
 		});
+		
+		this.infoWindow.addListener("closeclick", function() { this.infoWindow._wasOpen = false }.bind(this) );
+
 		
 		this.handleLocation();
 		
 		this.addNeswPrototype();
 		
+		this.set("isMapReady", true);
+		
+		this.map.addListener('center_changed', this._updateViewData.bind(this))
+		this.map.addListener('bounds_changed', this._updateViewData.bind(this))
 	},
 	
+	_updateViewData : function() {
+		var center = this.map.getCenter(),
+			bounds = this.map.getBounds(),
+			ne, eastMiddle, northMiddle;
+
+		if(!bounds) return;
+
+		ne = bounds.getNorthEast();
+
+		eastMiddle = new google.maps.LatLng({ lat : center.lat(), lng : ne.lng() })
+		northMiddle = new google.maps.LatLng({ lat : ne.lat(), lng : center.lng() })
+
+		this.set("radius", //Math.floor(
+							Math.min.apply(this, [	google.maps.geometry.spherical.computeDistanceBetween(center, eastMiddle),
+													google.maps.geometry.spherical.computeDistanceBetween(center, northMiddle)] ) / 1000);
+													
+								//* 100)  / 100000 );
+
+		this.set("center", { lng : center.lng(), lat : center.lat() });
+
+		this._itemsChanged();
+		this._checkCrossedBounds(bounds);
+	},
+	
+	_checkCrossedBounds : function(bounds) {
+		this.cancelDebouncer("_checkCrossedBounds");
+		this.debounce("_checkCrossedBounds", function() {
+			var ne 
+			if(!this._lastBounds || !(this._lastBounds.contains(bounds.getNorthEast()) && this._lastBounds.contains(bounds.getSouthWest())))
+			{
+				this.fire('crossed-last-bounds');
+				//console.log('crossed-last-bounds')
+				
+				this.cancelDebouncer('items-changed');
+
+				this._lastBounds = bounds;
+			}
+		}, 100);
+	},
+
 	handleLocation : function () {
 		if (navigator.geolocation) {
 			navigator.geolocation.getCurrentPosition(function(position) {
@@ -191,40 +284,60 @@
         }
     },
 	
-	/*creates a new marker from an object or array of objects containing marker options*/
-	newMarker : function(object) {
+	/*creates new markers from objects containing marker options*/
+	makeMarkers : function(object, fitBounds) {
+		var orig = object, res;
 		if(!(object instanceof Array))
 			object = [object];
 		
-		object.forEach(function(obj){
-			if(!obj.position)
+		res = object.map(function(obj){
+			if(!obj.geo)
 				throw ("Given marker object has no position!");
-			var marker = new google.maps.Marker({ map: this.map });
-			marker.setOptions(obj)
+			var marker = new google.maps.Marker({ 
+				// map: this.map,
+				position : new google.maps.LatLng(Number(obj.geo.latitude), Number(obj.geo.longitude)),
+				title : obj.title,
+				icon : this.defaultIcon
+				//visible : false
+			});
+			
 			this.allMarkers.push(marker);
 			bounds.extend(marker.position);
 			
-			if(this.template)
+			if(this.itemUrlTemplate)
 				marker.addListener('click', function() {
-					var widgetUrl = '/' + this.template + '/partial/' + obj.id + '/widget/';
+					var widgetUrl = this.itemUrlTemplate.replace(/\[id\]/, obj.id);
 					this.fire('icon-click', widgetUrl);
 					var loader = this.$.widget_loader;
 					loader.url = widgetUrl;
-					this.infowindow.setContent('<paper-spinner alt="Loading widget" active></paper-spinner>');
+					this.infoWindow.setContent('<paper-spinner alt="Loading widget" active></paper-spinner>');
 					loader.generateRequest();
-					this.infowindow.open(this.map, marker);
+					this.infoWindow.open(this.map, marker);					
 				}.bind(this));
+				
+			return marker;
 		}.bind(this));
 
-		this.markersInShape();
+		//this.markersInShape();
 
-		this.map.fitBounds(bounds);
+		this._checkCrossedBounds(bounds);
+		
+		if(fitBounds)
+			this.map.fitBounds(bounds);
+		
+		return res;
 	},
 	
 	widgetLoaded : function (ev) {
 		var loader = this.$.widget_loader;
 		
-		this.infowindow.setContent(loader.lastResponse);
+		this.infoWindow.setContent(loader.lastResponse);
+
+		this.infoWindow._wasOpen = loader.lastResponse;
+		
+		this.async(function() {
+			this.cancelDebouncer('items-changed'); // a hack to prevent movement caused by the infoWindow from causing a refresh
+		}, 100);
 	},
 	
 	/*free hand drawing of polygons. all markers inside shape marked as selected*/
@@ -244,31 +357,9 @@
 			while(this.allPolys.length)
 				this.allPolys.pop().setMap(null);
 			this.canFilter = false;
-			return;
 		}
-				
-		for(i = 0; i < this.allMarkers.length; i++){
-			if(this.allMarkers[i].getIcon()){
-				this.allMarkers[i].setOptions({
-					icon: null,
-				});
-				this.allMarkers[i].selected = false;
-			}
-		}
-	},
-	
-	/*removes all markers that aren't selected*/
-	filter : function (ev) {
-		if(!this.canFilter)
-			return;
-		var ids = [];
-		for(i = 0; i < this.allMarkers.length; i++){
-			if(!this.allMarkers[i].selected)
-				this.allMarkers[i].setMap(null);
-			else 
-				ids.push(this.allMarkers[i].id)
-		}
-		this.set('itemIds', ids);
+		
+		this._itemsChanged();
 	},
 	
 	/*restores map to clean icons of all past loaded markers*/
@@ -329,11 +420,16 @@
 	},
 	
 	clearAll : function () {
-		while(this.allMarkers.length)
-			this.allMarkers.pop().setMap(null);
+		this.allMarkers.forEach(function(m) { m.setMap(null) });
+			
+		this.set("allMarkers", []);
+
+		if(this.markerCluster)
+			this.markerCluster.clearMarkers(); //.forEach(function(m) { m.setMap(null) };
+		// this.
 	},
 	
-	_radiusChanged : function () {
+	/*_radiusChanged : function () {
 		var circ = new google.maps.Circle();
 		circ.setRadius(this.displayRadius * 1000);
 		circ.setCenter(this.displayCenter);
@@ -343,7 +439,7 @@
 	_centerChanged : function () {
 		if(this.map)
 			this.map.setCenter(this.displayCenter);
-	},
+	},*/
 	
 	drawFreeHand : function (){
 		//the polygon
@@ -365,11 +461,11 @@
 			
 			this.enable()
 			this.canFilter = true;
-			this.markersInShape();
+			this._itemsChanged();
 		}.bind(this));
 	},
 
-	/*disable and enable turn off map functionality for drawing then turn it back on when done*/
+	/*disable and enable map functionality for drawing then turn it back on when done*/
 	disable : function(){
         this.map.setOptions({
             draggable: false, 
@@ -391,49 +487,128 @@
     },
 	
 	/*checks all markers after a new shape is created*/
-	markersInShape : function(){
-		this.allMarkers.forEach(function(marker){
-			this.markerInShape(marker);
-		}.bind(this));
-		this.filter();
+	_itemsChanged : function(){
+		var itemsInShape = [];
+		
+		this.set('isWorking', true);
+		
+		this.cancelDebouncer('items-changed');
+		this.debounce('items-changed', function() {
+			this.clearAll();
+
+			if(!this.items) 
+				return this.set("itemsInShape", []);
+			
+			this.items.forEach(function(item){
+				if(this.itemInShape(item))
+					itemsInShape.push(item);
+			}.bind(this));
+
+			this.set("itemsInShape", itemsInShape);
+			this.notifyPath("itemsInShape.*");
+		}, 100);
 	},
 	
 	/*checks a giver marker against all shapes when it is created*/
-	markerInShape : function(marker){
-		this.allPolys.forEach(function(poly){
-			if (google.maps.geometry.poly.containsLocation(marker.position, poly)){
-					marker.setOptions({
-						icon : this.defaultIcon || ''
-					});
-					marker.selected = true;
-					return;
-				}
+	itemInShape : function(item){
+		var LatLng = google.maps.LatLng, bounds, latlng;
+		
+		latlng = new LatLng(item.geo.latitude, item.geo.longitude);
+		
+		if(!this.allPolys.length)
+		{
+			bounds = this.map.getBounds();
+			if(!bounds)
+				return;
+			return bounds.contains(latlng);
+		}
+		
+		return this.allPolys.reduce(function(res, poly){
+			return res || google.maps.geometry.poly.containsLocation(latlng, poly);
+		}, false);
+	},
+	
+	// centerLocation must be a geocoder response
+	_centerLocation : function() {
+		if(!this.get("centerLocation.geometry"))
+			return;
+
+		//var geocoder = new google.maps.Geocoder();
+		var g = this.centerLocation.geometry;
+
+		this.map.setCenter(new google.maps.LatLng(g.location.lat(), g.location.lng()));
+		this.map.fitBounds(g.viewport);
+		
+		return;
+		
+		geocoder.geocode({'placeId': this.centerLocation}, function(results, status) {
+			if (status === 'OK') {
+				if (results[0]){
+					/*marker.position = results[0].geometry.location;
+					markers.push(marker);
+					if(markers.length == res.length)
+						this.makeMarkers(markers);*/
+					this.map.setCenter(results[0].geometry.location)
+					this.map.fitBounds(results[0].geometry.viewport);
+				}else
+					console.error('No geocode results found for given object:', obj);
+			} else
+				console.error('Geocoder failed due to: ' + status);
 		});
 	},
 	
-	loadClassified : function(res) {
-		this.clearAll();
-		var markers = [];
+	_itemsInShapeChanged : function() {
+		//this.clearAll();
+		var markers;
 		var ids = []; 
-		var geocoder = new google.maps.Geocoder;
-		res.forEach(function(obj){
+
+		if(!this.itemsInShape || !this.itemsInShape.length)
+		{
+			this.set('isWorking', false);
+			return;
+		}
+
+		//if(this.allMarkers.length)
+		markers = this.makeMarkers(this.itemsInShape); //, !this.allMarkers.length);
+
+		this.set('itemIds', ids);
+		
+		this.markerCluster = new MarkerClusterer(this.map, markers,
+            { imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'} );
+
+		if(this.infoWindow._wasOpen)
+		{
+			this.infoWindow.open();
+			this.infoWindow.setContent(this.infoWindow._wasOpen)
+		};
+		
+		this.set('isWorking', false);
+
+		/*this.itemsInShape.forEach(function(obj){
 			var position;
 			var marker = { id : obj.id };
-			ids.push(obj.id);
-			geocoder.geocode({'placeId': obj.geo.place_id}, function(results, status) {
-				if (status === 'OK') {
-					if (results[0]){
-						marker.position = results[0].geometry.location;
-						markers.push(marker);
-						if(markers.length == res.length)
-							this.newMarker(markers);
-					}else
-						console.error('No geocode results found for given object:', obj);
-				} else
-					console.error('Geocoder failed due to: ' + status);
+			
+			ids.push(obj.id);			
+			
+			if(obj.geo) {
+				markers.push(obj);
+			}
+			
+			/*else
+				geocoder.geocode({'placeId': obj.geo.place_id}, function(results, status) {
+					if (status === 'OK') {
+						if (results[0]){
+							marker.position = results[0].geometry.location;
+							markers.push(marker);
+							if(markers.length == res.length)
+								this.makeMarkers(markers);
+						}else
+							console.error('No geocode results found for given object:', obj);
+					} else
+						console.error('Geocoder failed due to: ' + status);
 			}.bind(this));
-		}.bind(this));
-		this.set('itemIds', ids);
+		}.bind(this));*/
+
 	},
 	
 	/* adds function to prototype of a maps polygon.
