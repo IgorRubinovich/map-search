@@ -253,6 +253,12 @@
 	_checkCrossedBounds : function(bounds) {
 		this.cancelDebouncer("_checkCrossedBounds");
 		this.debounce("_checkCrossedBounds", function() {
+			this.fire('crossed-last-bounds');
+			
+			return;
+			
+			/* the following optimization is "too smart": when many items are potentially available, zooming in and out will influence the result every time:
+
 			var ne 
 			if(!this._lastBounds || !(this._lastBounds.contains(bounds.getNorthEast()) && this._lastBounds.contains(bounds.getSouthWest())))
 			{
@@ -263,9 +269,10 @@
 
 				this._lastBounds = bounds;
 			}
+			*/
 		}, 100);
 	},
-
+	
 	handleLocation : function () {
 		if (navigator.geolocation) {
 			navigator.geolocation.getCurrentPosition(function(position) {
