@@ -103,6 +103,8 @@
 	Polymer({
 	is: 'map-search',
 
+	behaviors : [Polymer.IronFormElementBehavior],
+	
 	properties : {
 		map : { type: Object },
 		infoWindow : { type: Object },
@@ -154,19 +156,20 @@
 			value : 'data:image/png;base64,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'
 		},
 		
-		/*as var name says, percent of height to minimize to when asked to minimize*/
+		/* as var name says, percent of height to minimize to when asked to minimize */
 		percentMinimize : { type : Number, value : 0.5 },
-		
-		/*does there exist something to filter out against so we don't filter everything*/
-		canFilter : { type : Boolean, value : false },
-		
-		itemUrlTemplate : { type : String },
 
+		/* does there exist something to filter out against so we don't filter everything */
+		canFilter : { type : Boolean, value : false },
+
+		itemUrlTemplate : { type : String },
+		itemHtmlTemplate : { type : String },
+		
 		itemIds : {
 			type : Array,
 			notify : true
 		},
-		
+
 		items : { 
 			type : Array,
 			notify : true,
@@ -188,10 +191,17 @@
 		isWorking : { 
 			type : Boolean,
 			notify : true
+		},
+		value : {
+			type : String
 		}
 	},
 	
-	observers : ["_itemsChanged(items.*)","_itemsInShapeChanged(isAttached,isMapReady,itemsInShape.*)"],
+	_updateValue : function() {
+		this.set("value", JSON.stringify({ center : this.center, radius : this.radius }))
+	},
+	
+	observers : ["_itemsChanged(items.*)","_itemsInShapeChanged(isAttached,isMapReady,itemsInShape.*)","_updateValue(center,radius)"],
 	
 	ready : function() { },
 	
@@ -313,10 +323,20 @@
 				icon : this.defaultIcon
 				//visible : false
 			});
-			
+
 			this.allMarkers.push(marker);
 			bounds.extend(marker.position);
 			
+			if(this.itemHtmlTemplate)
+				marker.addListener('click', function() {
+					this.fire('icon-click', object);
+					
+					//this.infoWindow.setContent(this.itemHtmlTemplate.replace(/\[id\]/, obj.id));
+					
+					this.infoWindow.setContent(this.itemHtmlTemplate.replace(/\[item\]/, JSON.stringify(obj)));
+					this.infoWindow.open(this.map, marker);					
+				}.bind(this))
+			else
 			if(this.itemUrlTemplate)
 				marker.addListener('click', function() {
 					var widgetUrl = this.itemUrlTemplate.replace(/\[id\]/, obj.id);
