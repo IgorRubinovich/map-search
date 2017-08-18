@@ -229,7 +229,9 @@
 			disableAutoPan : true
 		});
 		
-		this.infoWindow.addListener("closeclick", function() { this.infoWindow._wasOpen = false }.bind(this) );
+		this.infoWindow.addListener("closeclick", function() { 
+			this.infoWindow._wasOpen = null 
+		}.bind(this) );
 
 		
 		this.handleLocation();
@@ -332,9 +334,11 @@
 					this.fire('icon-click', object);
 					
 					//this.infoWindow.setContent(this.itemHtmlTemplate.replace(/\[id\]/, obj.id));
+					var content = this.itemHtmlTemplate.replace(/\[item\]/, JSON.stringify(obj));
 					
-					this.infoWindow.setContent(this.itemHtmlTemplate.replace(/\[item\]/, JSON.stringify(obj)));
-					this.infoWindow.open(this.map, marker);					
+					this.infoWindow.setContent(content);
+					this.infoWindow.open(this.map, marker);
+					this.infoWindow._wasOpen = { id : obj.id }; //content;			
 				}.bind(this))
 			else
 			if(this.itemUrlTemplate)
@@ -346,6 +350,7 @@
 					this.infoWindow.setContent('<paper-spinner alt="Loading widget" active></paper-spinner>');
 					loader.generateRequest();
 					this.infoWindow.open(this.map, marker);					
+					this.infoWindow._wasOpen = { id : obj.id };			
 				}.bind(this));
 				
 			return marker;
@@ -592,7 +597,7 @@
 	
 	_itemsInShapeChanged : function() {
 		//this.clearAll();
-		var markers;
+		var markers, prevOpenMarker, prevOpenItem;
 		var ids = []; 
 
 		if(!this.itemsInShape || !this.itemsInShape.length)
@@ -609,12 +614,12 @@
 		this.markerCluster = new MarkerClusterer(this.map, markers,
             { imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m'} );
 
-		if(this.infoWindow._wasOpen)
+		if(this.infoWindow._wasOpen && (prevOpenItem = this.itemsInShape.filter(function(i) { return i.id == this.infoWindow._wasOpen.id }.bind(this))[0]))
 		{
-			this.infoWindow.open();
-			this.infoWindow.setContent(this.infoWindow._wasOpen)
-		};
-		
+			prevOpenMarker = markers[prevOpenItem];
+			this.infoWindow.open(this.map, prevOpenMarker);
+		}
+
 		this.set('isWorking', false);
 
 		/*this.itemsInShape.forEach(function(obj){
