@@ -112,7 +112,7 @@
 		/*default center of the map*/
 		defaultCenter : {
 			type : Object,
-			// Prague
+			// Prague (cause made in Czech)
 			value : { lat : 50.0755, lng : 14.4378 },
 			readOnly: true
 		},
@@ -164,6 +164,7 @@
 
 		itemUrlTemplate : { type : String },
 		itemHtmlTemplate : { type : String },
+		assignItemToTemplatedElementProperty : { type : String },
 		
 		itemIds : {
 			type : Array,
@@ -291,6 +292,12 @@
 		}, 100);
 	},
 	
+	handleLocationEitherWay : function(pos) {
+		this.displayCenter = pos;
+		this.displayRadius = 1.5;
+		this.map.setCenter(pos);
+	},
+	
 	handleLocation : function () {
 		if (navigator.geolocation) {
 			navigator.geolocation.getCurrentPosition(function(position) {
@@ -298,12 +305,13 @@
 					lat: position.coords.latitude,
 					lng: position.coords.longitude
 				};
-				this.displayCenter = pos;
-				this.displayRadius = 1.5;
-				this.map.setCenter(pos);
-			}.bind(this), function() {
-				console.error('Error: The Geolocation service failed.');
-			});
+				
+				this.handleLocationEitherWay(pos);
+			}.bind(this), function(err) {
+				console.warn('Warning: The Geolocation service failed, centering map at default location (customizable with default-center attribute).', err);
+				
+				this.handleLocationEitherWay(this.defaultCenter);
+			}.bind(this));
         } else {
 			console.error('Error: Your browser doesn\'t support geolocation.')
         }
@@ -333,10 +341,19 @@
 				marker.addListener('click', function() {
 					this.fire('icon-click', object);
 					
+					var content = this.itemHtmlTemplate
 					//this.infoWindow.setContent(this.itemHtmlTemplate.replace(/\[id\]/, obj.id));
-					var content = this.itemHtmlTemplate.replace(/\[item\]/, JSON.stringify(obj));
+					if(!this.assignItemToTemplatedElementProperty)
+						var content = content.replace(/\[item\]/, JSON.stringify(obj)); // this is causing trouble with quotes. Hence the assignItemToTemplatedElementProperty option
+						
+					var div = document.createElement('div')
+					div.innerHTML = content;
+	
+					if(this.assignItemToTemplatedElementProperty)
+						div.firstChild[this.assignItemToTemplatedElementProperty] = obj;
 					
-					this.infoWindow.setContent(content);
+					this.infoWindow.setContent(div.firstChild);
+					
 					this.infoWindow.open(this.map, marker);
 					this.infoWindow._wasOpen = { id : obj.id }; //content;			
 				}.bind(this))
