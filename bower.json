@@ -2,6 +2,7 @@
   "name": "map-search",
   "homepage": "https://github.com/IgorRubinovich/map-search",
   "authors": [
+    "Igor Rubinovich <igor.rubinovich@gmail.com>",
     "Danny Semeniuta <d.semeniuta@gmail.com>"
   ],
   "description": "A map component that can take builds markers and can filter results by polygon area",
