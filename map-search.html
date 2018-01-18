@@ -123,6 +123,8 @@
 		radius : { type : Number, notify : true },		
 		center : { type : Object, notify : true },
 		
+		geoPath : { type : "String", value : "geo" },
+		
 		centerLocation : { type : Object, notify : true, observer : "_centerLocation" },
 		language : { type : String, value : "", notify : true, observer : "_centerLocation" },
 		
@@ -241,8 +243,12 @@
 		
 		this.set("isMapReady", true);
 		
+		this.map.addListener('idle', this._updateViewData.bind(this));
+
+		/*
 		this.map.addListener('center_changed', this._updateViewData.bind(this))
 		this.map.addListener('bounds_changed', this._updateViewData.bind(this))
+		*/
 	},
 	
 	_updateViewData : function() {
@@ -267,6 +273,8 @@
 
 		this._itemsChanged();
 		this._checkCrossedBounds(bounds);
+		
+		this.fire('iron-change');
 	},
 	
 	_checkCrossedBounds : function(bounds) {
@@ -324,11 +332,13 @@
 			object = [object];
 		
 		res = object.map(function(obj){
-			if(!obj.geo)
+			var geo = this.get(this.geoPath, obj);
+
+			if(!geo)
 				throw ("Given marker object has no position!");
 			var marker = new google.maps.Marker({ 
 				// map: this.map,
-				position : new google.maps.LatLng(Number(obj.geo.latitude), Number(obj.geo.longitude)),
+				position : new google.maps.LatLng(Number(geo.latitude), Number(geo.longitude)),
 				title : obj.title,
 				icon : this.defaultIcon
 				//visible : false
@@ -340,7 +350,7 @@
 			if(this.itemHtmlTemplate)
 				marker.addListener('click', function() {
 					this.fire('icon-click', object);
-					
+
 					var content = this.itemHtmlTemplate
 					//this.infoWindow.setContent(this.itemHtmlTemplate.replace(/\[id\]/, obj.id));
 					if(!this.assignItemToTemplatedElementProperty)
@@ -564,11 +574,14 @@
 		}, 100);
 	},
 	
-	/*checks a giver marker against all shapes when it is created*/
+	/* checks a given marker against all shapes when it is created */
 	itemInShape : function(item){
 		var LatLng = google.maps.LatLng, bounds, latlng;
+		var geo = this.get(this.geoPath, item);
+
+		if(!geo) return false;
 		
-		latlng = new LatLng(item.geo.latitude, item.geo.longitude);
+		latlng = new LatLng(geo.latitude, geo.longitude);
 		
 		if(!this.allPolys.length)
 		{
